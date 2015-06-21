@@ -1,0 +1,26 @@
+{
+	"ImportPath": "github.com/0xor1/sus",
+	"GoVersion": "go1.4",
+	"Deps": [
+		{
+			"ImportPath": "github.com/golang/protobuf/proto",
+			"Rev": "655cdfa588ea190e901bc5590e65d5621688847c"
+		},
+		{
+			"ImportPath": "github.com/qedus/nds",
+			"Rev": "d2403ec8f0f07e332022f239f1289665b1c002b0"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/assert",
+			"Rev": "e4ec8152c15fc46bd5056ce65997a07c7d415325"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "ff8eb9a34a5cbb9941ffc6f84a19a8014c2646ad"
+		},
+		{
+			"ImportPath": "google.golang.org/appengine",
+			"Rev": "0867183215f0e9a27cb9558dd4efd17ff55e75ba"
+		}
+	]
+}

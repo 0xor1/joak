@@ -1,0 +1,158 @@
+package nds_test
+
+import (
+	"errors"
+	"testing"
+
+	"github.com/qedus/nds"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/memcache"
+)
+
+func TestPutMultiNoPropertyList(t *testing.T) {
+	c, closeFunc := NewContext(t, nil)
+	defer closeFunc()
+
+	keys := []*datastore.Key{datastore.NewKey(c, "Test", "", 1, nil)}
+	pl := datastore.PropertyList{datastore.Property{}}
+
+	if _, err := nds.PutMulti(c, keys, pl); err == nil {
+		t.Fatal("expecting no PropertyList error")
+	}
+}
+
+func TestPutPropertyLoadSaver(t *testing.T) {
+	c, closeFunc := NewContext(t, nil)
+	defer closeFunc()
+
+	type testEntity struct {
+		IntVal int
+	}
+
+	te := &testEntity{2}
+	pl, err := datastore.SaveStruct(te)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	keys := []*datastore.Key{datastore.NewKey(c, "Test", "", 1, nil)}
+
+	pls := datastore.PropertyList(pl)
+	if _, err := nds.PutMulti(c, keys,
+		[]datastore.PropertyLoadSaver{&pls}); err != nil {
+		t.Fatal(err)
+	}
+
+	getPl := datastore.PropertyList{}
+	if err := nds.GetMulti(c,
+		keys, []datastore.PropertyLoadSaver{&getPl}); err != nil {
+		t.Fatal(err)
+	}
+	getTe := &testEntity{}
+	if err := datastore.LoadStruct(getTe, getPl); err != nil {
+		t.Fatal(err)
+	}
+	if te.IntVal != getTe.IntVal {
+		t.Fatal("expected same IntVal", getTe.IntVal)
+	}
+}
+
+func TestPutNilArgs(t *testing.T) {
+	c, closeFunc := NewContext(t, nil)
+	defer closeFunc()
+
+	if _, err := nds.Put(c, nil, nil); err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestPutMultiLockFailure(t *testing.T) {
+	c, closeFunc := NewContext(t, nil)
+	defer closeFunc()
+
+	type testEntity struct {
+		IntVal int
+	}
+
+	nds.SetMemcacheSetMulti(func(c context.Context,
+		items []*memcache.Item) error {
+		return errors.New("expected error")
+	})
+
+	defer func() {
+		nds.SetMemcacheSetMulti(memcache.SetMulti)
+	}()
+
+	keys := []*datastore.Key{datastore.NewKey(c, "Test", "", 1, nil)}
+	vals := []testEntity{testEntity{42}}
+
+	if _, err := nds.PutMulti(c, keys, vals); err == nil {
+		t.Fatal("expected nds.PutMulti error")
+	}
+}
+
+// Make sure PutMulti still works if we have a memcache unlock failure.
+func TestPutMultiUnlockMemcacheSuccess(t *testing.T) {
+	c, closeFunc := NewContext(t, nil)
+	defer closeFunc()
+
+	type testEntity struct {
+		IntVal int
+	}
+
+	nds.SetMemcacheDeleteMulti(func(c context.Context, keys []string) error {
+		return errors.New("expected error")
+	})
+
+	defer func() {
+		nds.SetMemcacheDeleteMulti(memcache.DeleteMulti)
+	}()
+
+	keys := []*datastore.Key{datastore.NewKey(c, "Test", "", 1, nil)}
+	vals := []testEntity{testEntity{42}}
+
+	if _, err := nds.PutMulti(c, keys, vals); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPutDatastoreMultiError(t *testing.T) {
+	c, closeFunc := NewContext(t, nil)
+	defer closeFunc()
+
+	type testEntity struct {
+		IntVal int
+	}
+
+	expectedErr := errors.New("expected error")
+
+	nds.SetDatastorePutMulti(func(c context.Context,
+		keys []*datastore.Key, vals interface{}) ([]*datastore.Key, error) {
+		return nil, appengine.MultiError{expectedErr}
+	})
+
+	defer func() {
+		nds.SetDatastorePutMulti(datastore.PutMulti)
+	}()
+
+	key := datastore.NewKey(c, "Test", "", 1, nil)
+	val := &testEntity{42}
+
+	if _, err := nds.Put(c, key, val); err == nil {
+		t.Fatal("expected error")
+	} else if err != expectedErr {
+		t.Fatal("should be expectedErr")
+	}
+}
+
+func TestPutMultiZeroKeys(t *testing.T) {
+	c, closeFunc := NewContext(t, nil)
+	defer closeFunc()
+
+	if _, err := nds.PutMulti(c, []*datastore.Key{},
+		[]interface{}{}); err != nil {
+		t.Fatal(err)
+	}
+}

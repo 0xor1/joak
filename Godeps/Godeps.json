@@ -1,0 +1,64 @@
+{
+	"ImportPath": "github.com/0xor1/joak",
+	"GoVersion": "go1.4",
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/go-uuid/uuid",
+			"Comment": "null-15",
+			"Rev": "35bc42037350f0078e3c974c6ea690f1926603ab"
+		},
+		{
+			"ImportPath": "github.com/0xor1/oak",
+			"Rev": "e7a861ff7e40bc44b798f5e167758717394699d3"
+		},
+		{
+			"ImportPath": "github.com/0xor1/sid",
+			"Rev": "66470a3cc0630bf2cc49a40c984d545861092c5a"
+		},
+		{
+			"ImportPath": "github.com/0xor1/sus",
+			"Rev": "0d9b5b2e5dce93ee6f49ee98643c5d40cb8b1618"
+		},
+		{
+			"ImportPath": "github.com/golang/protobuf/proto",
+			"Rev": "655cdfa588ea190e901bc5590e65d5621688847c"
+		},
+		{
+			"ImportPath": "github.com/gorilla/context",
+			"Rev": "215affda49addc4c8ef7e2534915df2c8c35c6cd"
+		},
+		{
+			"ImportPath": "github.com/gorilla/mux",
+			"Rev": "8a875a034c69b940914d83ea03d3f1299b4d094b"
+		},
+		{
+			"ImportPath": "github.com/gorilla/securecookie",
+			"Rev": "5f171f42328bdd573211bb82bdee8f259c4c61ae"
+		},
+		{
+			"ImportPath": "github.com/gorilla/sessions",
+			"Rev": "39dd83d692d0cb984af851b38e89b0cd8ea302b6"
+		},
+		{
+			"ImportPath": "github.com/qedus/nds",
+			"Rev": "d2403ec8f0f07e332022f239f1289665b1c002b0"
+		},
+		{
+			"ImportPath": "github.com/stretchr/testify/assert",
+			"Rev": "e4ec8152c15fc46bd5056ce65997a07c7d415325"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "ff8eb9a34a5cbb9941ffc6f84a19a8014c2646ad"
+		},
+		{
+			"ImportPath": "google.golang.org/appengine",
+			"Rev": "0867183215f0e9a27cb9558dd4efd17ff55e75ba"
+		},
+		{
+			"ImportPath": "labix.org/v2/mgo/bson",
+			"Comment": "287",
+			"Rev": "gustavo@niemeyer.net-20140501184651-975yyw9ipld92pji"
+		}
+	]
+}

@@ -1,0 +1,3 @@
+PASS
+coverage: 100.0% of statements
+ok  	github.com/0xor1/sid	0.030s

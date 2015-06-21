@@ -1,0 +1,439 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com\0xor1\oak\oak.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" >package oak
+
+import(
+        `errors`
+        `strings`
+        `net/http`
+        `encoding/gob`
+        js `encoding/json`
+        `github.com/gorilla/mux`
+        `github.com/gorilla/sessions`
+)
+
+const (
+        _CREATE = `/create`
+        _JOIN         = `/join`
+        _POLL         = `/poll`
+        _ACT         = `/act`
+        _LEAVE         = `/leave`
+
+        _USER_ID        = `userId`
+        _ENTITY_ID        = `entityId`
+        _ENTITY                = `entity`
+
+        _ID                        = `id`
+        _VERSION        = `v`
+)
+
+type EntityStore interface{
+        Create() (entityId string, entity Entity, err error)
+        Read(entityId string) (entity Entity, err error)
+        Update(entityId string, entity Entity) (err error)
+}
+
+type Entity interface {
+        GetVersion() int
+        IsActive() bool
+        CreatedBy() (userId string)
+        RegisterNewUser() (userId string, err error)
+        UnregisterUser(userId string) error
+        Kick() (updated bool)
+}
+
+type GetJoinResp func(userId string, e Entity) Json
+type GetEntityChangeResp func(userId string, e Entity) Json
+type PerformAct func(json Json, userId string, e Entity) (err error)
+
+func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, entity Entity, entityStore EntityStore, getJoinResp GetJoinResp, getEntityChangeResp GetEntityChangeResp, performAct PerformAct)<span class="cov8" title="1">{
+        gob.Register(entity)
+
+        getSession := func(w http.ResponseWriter, r *http.Request) (*session, error) </span><span class="cov8" title="1">{
+                s, err := sessionStore.Get(r, sessionName)
+
+                session := &amp;session{
+                        writer: w,
+                        request: r,
+                        internalSession: s,
+                }
+
+                var val interface{}
+                var exists bool
+
+                if val, exists = s.Values[_USER_ID]; exists </span><span class="cov8" title="1">{
+                        session.userId = val.(string)
+                }</span><span class="cov8" title="1">else{
+                        session.userId = ``
+                }</span>
+
+                <span class="cov8" title="1">if val, exists = s.Values[_ENTITY_ID]; exists </span><span class="cov8" title="1">{
+                        session.entityId = val.(string)
+                }</span><span class="cov8" title="1">else{
+                        session.entityId = ``
+                }</span>
+
+                <span class="cov8" title="1">if val, exists = s.Values[_ENTITY]; exists &amp;&amp; val != nil </span><span class="cov8" title="1">{
+                        session.entity = val.(Entity)
+                }</span><span class="cov8" title="1">else{
+                        session.entity = nil
+                }</span>
+
+                <span class="cov8" title="1">return session, err</span>
+        }
+
+        <span class="cov8" title="1">fetchEntity := func(entityId string) (entity Entity, err error) </span><span class="cov8" title="1">{
+                retryCount := 0
+                for </span><span class="cov8" title="1">{
+                        entity, err = entityStore.Read(entityId)
+                        if err == nil </span><span class="cov8" title="1">{
+                                if entity.Kick() </span><span class="cov8" title="1">{
+                                        err = entityStore.Update(entityId, entity)
+                                        if err != nil &amp;&amp; retryCount == 0 &amp;&amp; strings.Contains(err.Error(), `nonsequential update for entity with id "`+entityId+`"`) </span><span class="cov8" title="1">{
+                                                err = nil
+                                                retryCount++
+                                                continue</span>
+                                        }
+                                }
+                        }
+                        <span class="cov8" title="1">break</span>
+                }
+                <span class="cov8" title="1">return</span>
+        }
+
+        <span class="cov8" title="1">create := func(w http.ResponseWriter, r *http.Request)</span><span class="cov8" title="1">{
+                s, _ := getSession(w, r)
+                if s.isNotEngaged() </span><span class="cov8" title="1">{
+                        entityId, entity, err := entityStore.Create()
+                        if err != nil </span><span class="cov8" title="1">{
+                                writeError(w, err)
+                                return
+                        }</span>
+                        <span class="cov8" title="1">s.set(entity.CreatedBy(), entityId, entity)</span>
+                }
+                <span class="cov8" title="1">writeJson(w, &amp;Json{_ID: s.getEntityId()})</span>
+        }
+
+        <span class="cov8" title="1">join := func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+                entityId, _, err := getRequestData(r, false)
+                if err != nil </span><span class="cov8" title="1">{
+                        writeError(w, err)
+                        return
+                }</span>
+
+                <span class="cov8" title="1">entity, err := fetchEntity(entityId)
+                if err != nil </span><span class="cov8" title="1">{
+                        writeError(w, err)
+                        return
+                }</span>
+
+                <span class="cov8" title="1">s, _ := getSession(w, r)
+                if s.isNotEngaged() &amp;&amp; entity.IsActive() </span><span class="cov8" title="1">{
+                        if userId, err := entity.RegisterNewUser(); err == nil </span><span class="cov8" title="1">{
+                                if err := entityStore.Update(entityId, entity); err == nil </span><span class="cov8" title="1">{
+                                        //entity was updated successfully this user is now active in this entity
+                                        s.set(userId, entityId, entity)
+                                }</span>
+                        }
+                }
+
+                <span class="cov8" title="1">respJson := getJoinResp(s.getUserId(), entity)
+                respJson[_VERSION] = entity.GetVersion()
+                writeJson(w, &amp;respJson)</span>
+        }
+
+        <span class="cov8" title="1">poll := func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+                entityId, version, err := getRequestData(r, true)
+                if err != nil </span><span class="cov8" title="1">{
+                        writeError(w, err)
+                        return
+                }</span>
+
+                <span class="cov8" title="1">entity, err := fetchEntity(entityId)
+                if err != nil </span><span class="cov8" title="1">{
+                        writeError(w, err)
+                        return
+                }</span>
+
+                <span class="cov8" title="1">if version == entity.GetVersion() </span><span class="cov8" title="1">{
+                        writeJson(w, &amp;Json{})
+                        return
+                }</span>
+
+                <span class="cov8" title="1">s, _ := getSession(w, r)
+                userId := s.getUserId()
+                if s.getEntityId() == entityId </span><span class="cov8" title="1">{
+                        if entity.IsActive() </span><span class="cov8" title="1">{
+                                s.set(userId, entityId, entity)
+                        }</span><span class="cov8" title="1"> else {
+                                s.clear()
+                        }</span>
+                }
+                <span class="cov8" title="1">respJson := getEntityChangeResp(userId, entity)
+                respJson[_VERSION] = entity.GetVersion()
+                writeJson(w, &amp;respJson)</span>
+        }
+
+        <span class="cov8" title="1">act := func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+                s, _ := getSession(w, r)
+                userId := s.getUserId()
+                sessionEntity := s.getEntity()
+                if sessionEntity == nil </span><span class="cov8" title="1">{
+                        writeError(w, errors.New(`no entity in session`))
+                        return
+                }</span>
+
+                <span class="cov8" title="1">json := readJson(r)
+                err := performAct(json, userId, sessionEntity)
+                if err != nil </span><span class="cov8" title="1">{
+                        writeError(w, err)
+                        return
+                }</span>
+
+                <span class="cov8" title="1">entityId := s.getEntityId()
+                entity, err := fetchEntity(entityId)
+                if err != nil </span><span class="cov8" title="1">{
+                        writeError(w, err)
+                        return
+                }</span>
+
+                <span class="cov8" title="1">if err = performAct(json, userId, entity); err != nil </span><span class="cov8" title="1">{
+                        writeError(w, err)
+                        return
+                }</span>
+
+                <span class="cov8" title="1">if err = entityStore.Update(entityId, entity); err != nil </span><span class="cov8" title="1">{
+                        writeError(w, err)
+                        return
+                }</span>
+
+                <span class="cov8" title="1">if entity.IsActive() </span><span class="cov8" title="1">{
+                        s.set(s.getUserId(), entityId, entity)
+                }</span><span class="cov8" title="1"> else {
+                        s.clear()
+                }</span>
+                <span class="cov8" title="1">respJson := getEntityChangeResp(userId, entity)
+                respJson[_VERSION] = entity.GetVersion()
+                writeJson(w, &amp;respJson)</span>
+        }
+
+        <span class="cov8" title="1">leave := func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+                s, _ := getSession(w, r)
+                entityId := s.getEntityId()
+                sessionEntity := s.getEntity()
+                if sessionEntity == nil</span><span class="cov8" title="1">{
+                        s.clear()
+                        return
+                }</span>
+
+                <span class="cov8" title="1">err := sessionEntity.UnregisterUser(s.getUserId())
+                if err != nil </span><span class="cov8" title="1">{
+                        writeError(w, err)
+                        return
+                }</span>
+
+                <span class="cov8" title="1">entity, err := entityStore.Read(entityId)
+                if err != nil </span><span class="cov8" title="1">{
+                        writeError(w, err)
+                        return
+                }</span>
+
+                <span class="cov8" title="1">err = entity.UnregisterUser(s.getUserId())
+                if err != nil </span><span class="cov8" title="1">{
+                        writeError(w, err)
+                        return
+                }</span>
+
+                <span class="cov8" title="1">err = entityStore.Update(entityId, entity)
+                if err != nil </span><span class="cov8" title="1">{
+                        writeError(w, err)
+                        return
+                }</span>
+
+                <span class="cov8" title="1">s.clear()</span>
+        }
+
+        <span class="cov8" title="1">router.Path(_CREATE).HandlerFunc(create)
+        router.Path(_JOIN).HandlerFunc(join)
+        router.Path(_POLL).HandlerFunc(poll)
+        router.Path(_ACT).HandlerFunc(act)
+        router.Path(_LEAVE).HandlerFunc(leave)</span>
+}
+
+type session struct{
+        writer http.ResponseWriter
+        request *http.Request
+        internalSession *sessions.Session
+        userId string
+        entityId string
+        entity Entity
+}
+
+func (s *session) set(userId string, entityId string, entity Entity) error <span class="cov8" title="1">{
+        s.userId = userId
+        s.entityId = entityId
+        s.entity = entity
+        s.internalSession.Values = map[interface{}]interface{}{
+                _USER_ID: userId,
+                _ENTITY_ID: entityId,
+                _ENTITY: entity,
+        }
+        return sessions.Save(s.request, s.writer)
+}</span>
+
+func (s *session) clear() error <span class="cov8" title="1">{
+        s.userId = ``
+        s.entityId = ``
+        s.entity = nil
+        s.internalSession.Values = map[interface{}]interface{}{}
+        return sessions.Save(s.request, s.writer)
+}</span>
+
+func (s *session) isNotEngaged() bool <span class="cov8" title="1">{
+        return s.entity == nil || !s.entity.IsActive()
+}</span>
+
+func (s *session) getUserId() string <span class="cov8" title="1">{
+        return s.userId
+}</span>
+
+func (s *session) getEntityId() string <span class="cov8" title="1">{
+        return s.entityId
+}</span>
+
+func (s *session) getEntity() Entity <span class="cov8" title="1">{
+        return s.entity
+}</span>
+
+type Json map[string]interface{}
+
+func writeJson(w http.ResponseWriter, obj interface{}) error<span class="cov8" title="1">{
+        js, err := js.Marshal(obj)
+        w.Header().Set(`Content-Type`, `application/json`)
+        w.Write(js)
+        return err
+}</span>
+
+func readJson(r *http.Request) Json <span class="cov8" title="1">{
+        json := Json{}
+        if r.Body == nil </span><span class="cov8" title="1">{
+                return json
+        }</span>
+        <span class="cov8" title="1">decoder := js.NewDecoder(r.Body)
+        decoder.Decode(&amp;json)
+        return json</span>
+}
+
+func writeError(w http.ResponseWriter, err error)<span class="cov8" title="1">{
+        http.Error(w, err.Error(), 500)
+}</span>
+
+func getRequestData(r *http.Request, isForPoll bool) (entityId string, version int, err error) <span class="cov8" title="1">{
+        reqJson := readJson(r)
+        if idParam, exists := reqJson[_ID]; exists </span><span class="cov8" title="1">{
+                if id, ok := idParam.(string); ok </span><span class="cov8" title="1">{
+                        entityId = id
+                        if isForPoll </span><span class="cov8" title="1">{
+                                if versionParam, exists := reqJson[_VERSION]; exists </span><span class="cov8" title="1">{
+                                        if v, ok := versionParam.(float64); ok </span><span class="cov8" title="1">{
+                                                version = int(v)
+                                        }</span><span class="cov8" title="1"> else {
+                                                err = errors.New(_VERSION + ` must be a number value`)
+                                        }</span>
+                                }<span class="cov8" title="1"> else {
+                                        err = errors.New(_VERSION + ` value must be included in request`)
+                                }</span>
+                        }
+                }<span class="cov8" title="1"> else {
+                        err = errors.New(_ID + ` must be a string value`)
+                }</span>
+        }<span class="cov8" title="1"> else {
+                err = errors.New(_ID +` value must be included in request`)
+        }</span>
+        <span class="cov8" title="1">return</span>
+}</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible = document.getElementById('file0');
+		files.addEventListener('change', onChange, false);
+		function onChange() {
+			visible.style.display = 'none';
+			visible = document.getElementById(files.value);
+			visible.style.display = 'block';
+			window.scrollTo(0, 0);
+		}
+	})();
+	</script>
+</html>
