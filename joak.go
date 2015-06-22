@@ -19,6 +19,7 @@ type Entity interface{
 	oak.Entity
 	IncrementVersion()
 	DecrementVersion()
+	SetDeleteAfter(time.Time)
 }
 
 type EntityFactory func()Entity
@@ -27,38 +28,33 @@ func now() time.Time {
 	return time.Now().UTC()
 }
 
-type gaeStoreObj struct{
-	Entity	 				`datastore:",noindex"`
-	DeleteAfter time.Time	`datastore:""`
-}
-
-func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfterDur time.Duration, clearOutDur time.Duration) (oak.EntityStore, error) {
+func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter time.Duration, clearOutAfter time.Duration) (oak.EntityStore, error) {
 	if kind == `` {
 		return nil, errors.New(`kind must not be an empty string`)
 	}
-	if deleteAfterDur.Seconds() <= 0 {
-		return nil, errors.New(`deleteAfterDur must be a positive time.Duration`)
+	if deleteAfter.Seconds() <= 0 {
+		return nil, errors.New(`deleteAfter must be a positive time.Duration`)
 	}
-	if clearOutDur.Seconds() <= 0 {
-		return nil, errors.New(`clearOutDur must be a positive time.Duration`)
+	if clearOutAfter.Seconds() <= 0 {
+		return nil, errors.New(`clearOutAfter must be a positive time.Duration`)
 	}
 
-	var lastGaeClearOut time.Time
+	var lastClearOut time.Time
 	var mtx sync.Mutex
 
-	pre := func() {
-		myLastGaeClearOutInst := lastGaeClearOut
-		if lastGaeClearOut.IsZero() || time.Since(lastGaeClearOut) >= clearOutDur {
+	clearOut := func() {
+		myLastClearOutInst := lastClearOut
+		if lastClearOut.IsZero() || time.Since(lastClearOut) >= clearOutAfter {
 			mtx.Lock()
-			if lastGaeClearOut != myLastGaeClearOutInst {
+			if lastClearOut != myLastClearOutInst {
 				mtx.Unlock()
 				return
 			}
-			lastGaeClearOut = now()
+			lastClearOut = now()
 			mtx.Unlock()
 			q := datastore.NewQuery(kind).Filter(`DeleteAfter <=`, now()).KeysOnly()
 			keys := []*datastore.Key{}
-			for iter := q.Run(context.Background()); ; {
+			for iter := q.Run(ctx);; {
 				key, err := iter.Next(nil)
 				if err == datastore.Done {
 					break
@@ -68,28 +64,26 @@ func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter
 				}
 				keys = append(keys, key)
 			}
-			nds.DeleteMulti(context.Background(), keys)
+			nds.DeleteMulti(ctx, keys)
 		}
-		return
 	}
 
-	return &entityStore{isForGae: true, deleteAfter: deleteAfterDur, preprocess: pre, inner: gus.NewGaeStore(kind, ctx, sid.Uuid, func()sus.Version{return &gaeStoreObj{Entity: ef(), DeleteAfter: now().Add(deleteAfterDur)}})}, nil
+	return &entityStore{deleteAfter, clearOut, gus.NewGaeStore(kind, ctx, sid.Uuid, func()sus.Version{return ef()})}, nil
 }
 
 func newMemoryStore(ef EntityFactory) oak.EntityStore {
-	pre := func(){}
-	return &entityStore{isForGae: false, preprocess: pre, inner: sus.NewJsonMemoryStore(sid.Uuid, func()sus.Version{return ef()})}
+	var deleteAfter time.Duration
+	return &entityStore{deleteAfter, func(){}, sus.NewJsonMemoryStore(sid.Uuid, func()sus.Version{return ef()})}
 }
 
 type entityStore struct {
-	isForGae	bool
-	deleteAfter	time.Duration
-	preprocess  func()
+	deleteAfter time.Duration
+	clearOut  	func()
 	inner 		sus.Store
 }
 
 func (es *entityStore) Create() (string, oak.Entity, error) {
-	go es.preprocess()
+	go es.clearOut()
 	id, v, err := es.inner.Create()
 	var e Entity
 	if err == nil && v != nil {
@@ -99,7 +93,7 @@ func (es *entityStore) Create() (string, oak.Entity, error) {
 }
 
 func (es *entityStore) Read(entityId string) (oak.Entity, error) {
-	go es.preprocess()
+	go es.clearOut()
 	v, err := es.inner.Read(entityId)
 	var e Entity
 	if err == nil && v != nil {
@@ -109,14 +103,11 @@ func (es *entityStore) Read(entityId string) (oak.Entity, error) {
 }
 
 func (es *entityStore) Update(entityId string, entity oak.Entity) (error) {
-	go es.preprocess()
-	if es.isForGae && es.deleteAfter.Seconds() > 0{
-		gso, ok := entity.(*gaeStoreObj)
-		if ok {
-			gso.DeleteAfter = now().Add(es.deleteAfter)
-		}
+	go es.clearOut()
+	e, ok := entity.(Entity)
+	if ok {
+		e.SetDeleteAfter(now().Add(es.deleteAfter))
 	}
-	e, _ := entity.(Entity)
 	return es.inner.Update(entityId, e)
 }
 
@@ -127,11 +118,11 @@ func RouteLocalTest(router *mux.Router, ef EntityFactory, sessionMaxAge int, ses
 	oak.Route(router, ss, sessionName, entity, newMemoryStore(ef), getJoinResp, getEntityChangeResp, performAct)
 }
 
-func RouteGaeProd(router *mux.Router, ctx context.Context, ef EntityFactory, sessionMaxAge int, sessionName string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, kind string, deleteAfterDuration time.Duration, clearOutDur time.Duration, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string) error {
+func RouteGaeProd(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, deleteAfter time.Duration, clearOutAfter time.Duration, kind string, ctx context.Context, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string) error {
 	ss := sessions.NewCookieStore([]byte(newAuthKey), []byte(newCryptKey), []byte(oldAuthKey), []byte(oldCryptKey))
 	ss.Options.HttpOnly = true
 	ss.Options.MaxAge = sessionMaxAge
-	es, err := newGaeStore(kind, ctx, ef, deleteAfterDuration, clearOutDur)
+	es, err := newGaeStore(kind, ctx, ef, deleteAfter, clearOutAfter)
 	if err != nil {
 		return err
 	}

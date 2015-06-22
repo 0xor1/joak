@@ -1,70 +1,48 @@
 package joak
 
 import(
+	//`log`
 	`time`
-	`regexp`
 	`testing`
+	`net/http`
+	`appengine/aetest`
 	`github.com/gorilla/mux`
+	`google.golang.org/appengine`
+	//`google.golang.org/appengine/datastore`
 	`github.com/stretchr/testify/assert`
 )
 
 func Test_RouteLocalTest(t *testing.T){
-	RouteLocalTest(mux.NewRouter(), nil, 300, `test`, &testEntity{}, nil, nil ,nil)
+	RouteLocalTest(mux.NewRouter(), nil, 300, `test`, &testEntity{}, nil, nil, nil)
 }
 
 func Test_RouteGaeProd(t *testing.T){
-	dur, _ := time.ParseDuration(`10m`)
-	err := RouteGaeProd(mux.NewRouter(), nil, nil, 300, `test`, &testEntity{}, nil, nil ,nil, `testEntity`, dur, dur, `6455d34dy2e1cx47`, `54a1e479w2eb3z4b`, ``, ``)
+	c, _ := aetest.NewContext(nil)
+	ctx := appengine.NewContext(c.Request().(*http.Request))
+	dur1, _ := time.ParseDuration(`-1s`)
 
-	assert.Nil(t, err, `err should be nil`)
+	err := RouteGaeProd(mux.NewRouter(), nil, 300, `test`, &testEntity{}, nil, nil, nil, dur1, dur1, ``, ctx, ``, ``, ``, ``)
 
-	err = RouteGaeProd(mux.NewRouter(), nil, nil, 300, `test`, &testEntity{}, nil, nil ,nil, ``, dur, dur, `6455d34dy2e1cx47`, `54a1e479w2eb3z4b`, ``, ``)
+	assert.Equal(t, `kind must not be an empty string`, err.Error(), `err should contain appropriate message`)
 
-	assert.Equal(t, `kind must not be an empty string`, err.Error(), `err should contain the appropriate message`)
+	err = RouteGaeProd(mux.NewRouter(), nil, 300, `test`, &testEntity{}, nil, nil, nil, dur1, dur1, `test`, ctx, ``, ``, ``, ``)
 
-	dur, _ = time.ParseDuration(`0m`)
-	err = RouteGaeProd(mux.NewRouter(), nil, nil, 300, `test`, &testEntity{}, nil, nil ,nil, `testEntity`, dur, dur, `6455d34dy2e1cx47`, `54a1e479w2eb3z4b`, ``, ``)
+	assert.Equal(t, `deleteAfter must be a positive time.Duration`, err.Error(), `err should contain appropriate message`)
 
-	assert.Equal(t, `deleteAfterDur must be a positive time.Duration`, err.Error(), `err should contain the appropriate message`)
+	dur2, _ := time.ParseDuration(`1s`)
 
-	dur2, _ := time.ParseDuration(`10m`)
-	err = RouteGaeProd(mux.NewRouter(), nil,  nil, 300, `test`, &testEntity{}, nil, nil ,nil, `testEntity`, dur2, dur, `6455d34dy2e1cx47`, `54a1e479w2eb3z4b`, ``, ``)
+	err = RouteGaeProd(mux.NewRouter(), nil, 300, `test`, &testEntity{}, nil, nil, nil, dur2, dur1, `test`, ctx, ``, ``, ``, ``)
 
-	assert.Equal(t, `clearOutDur must be a positive time.Duration`, err.Error(), `err should contain the appropriate message`)
-}
+	assert.Equal(t, `clearOutAfter must be a positive time.Duration`, err.Error(), `err should contain appropriate message`)
 
-func Test_Store(t *testing.T){
-	re := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-	store := newMemoryStore(func()Entity{return &testEntity{}})
+	err = RouteGaeProd(mux.NewRouter(), nil, 300, `test`, &testEntity{}, nil, nil, nil, dur2, dur2, `test`, ctx, ``, ``, ``, ``)
 
-	id, e1, err := store.Create()
-
-	assert.True(t, re.MatchString(id), `id is a valid uuid`)
-	assert.Equal(t, 0, e1.GetVersion(), `entity starts with version equal to 0`)
-	assert.Nil(t, err, `err should be nil`)
-
-	err = store.Update(id, e1)
-
-	e2, err := store.Read(id)
-	assert.Equal(t, 1, e2.GetVersion(), `entity version is updated to 1`)
-	assert.Nil(t, err, `err should be nil`)
-
-	es, _ := store.(*entityStore)
-	es.isForGae = true
-	es.deleteAfter, _ = time.ParseDuration(`10m`)
-	time := now().Add(es.deleteAfter)
-	e, _ := e1.(Entity)
-	gso := &gaeStoreObj{Entity:e}
-
-	err = es.Update(id, gso)
-
-	assert.Equal(t, 2, e.GetVersion(), `entity version is updated to 2`)
-	assert.Equal(t, time, gso.DeleteAfter, `DeleteAfter should have been updated`)
-	assert.Nil(t, err, `err should be nil`)
+	assert.Nil(t, err, `err should contain appropriate message`)
 }
 
 type testEntity struct{
-	Version int `datastore:",noindex"`
+	Version 	int 		`datastore:",noindex"`
+	DeleteAfter time.Time 	`datastore:""`
 }
 
 func (te *testEntity) GetVersion() int {
@@ -77,6 +55,10 @@ func (te *testEntity) IncrementVersion() {
 
 func (te *testEntity) DecrementVersion() {
 	te.Version--
+}
+
+func (te *testEntity) SetDeleteAfter(t time.Time) {
+	te.DeleteAfter = t
 }
 
 func (te *testEntity) IsActive() bool {
