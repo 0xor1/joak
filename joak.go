@@ -6,21 +6,19 @@ import(
 	`errors`
 	`github.com/0xor1/oak`
 	`github.com/0xor1/sus`
+	`github.com/0xor1/gus`
 	`github.com/0xor1/sid`
 	`github.com/qedus/nds`
 	`github.com/gorilla/mux`
 	`golang.org/x/net/context`
 	`github.com/gorilla/sessions`
-	"google.golang.org/appengine/datastore"
+	`google.golang.org/appengine/datastore`
 )
 
 type Entity interface{
-	sus.Version
-	IsActive() bool
-	CreatedBy() (userId string)
-	RegisterNewUser() (userId string, err error)
-	UnregisterUser(userId string) error
-	Kick() (updated bool)
+	oak.Entity
+	IncrementVersion()
+	DecrementVersion()
 }
 
 type EntityFactory func()Entity
@@ -34,7 +32,7 @@ type gaeStoreObj struct{
 	DeleteAfter time.Time	`datastore:""`
 }
 
-func newGaeStore(kind string, ef EntityFactory, deleteAfterDur time.Duration, clearOutDur time.Duration) (oak.EntityStore, error) {
+func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfterDur time.Duration, clearOutDur time.Duration) (oak.EntityStore, error) {
 	if kind == `` {
 		return nil, errors.New(`kind must not be an empty string`)
 	}
@@ -75,7 +73,7 @@ func newGaeStore(kind string, ef EntityFactory, deleteAfterDur time.Duration, cl
 		return
 	}
 
-	return &entityStore{isForGae: true, deleteAfter: deleteAfterDur, preprocess: pre, inner: sus.NewGaeStore(kind, sid.Uuid, func()sus.Version{return &gaeStoreObj{Entity: ef(), DeleteAfter: now().Add(deleteAfterDur)}})}, nil
+	return &entityStore{isForGae: true, deleteAfter: deleteAfterDur, preprocess: pre, inner: gus.NewGaeStore(kind, ctx, sid.Uuid, func()sus.Version{return &gaeStoreObj{Entity: ef(), DeleteAfter: now().Add(deleteAfterDur)}})}, nil
 }
 
 func newMemoryStore(ef EntityFactory) oak.EntityStore {
@@ -129,11 +127,11 @@ func RouteLocalTest(router *mux.Router, ef EntityFactory, sessionMaxAge int, ses
 	oak.Route(router, ss, sessionName, entity, newMemoryStore(ef), getJoinResp, getEntityChangeResp, performAct)
 }
 
-func RouteGaeProd(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, kind string, deleteAfterDuration time.Duration, clearOutDur time.Duration, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string) error {
+func RouteGaeProd(router *mux.Router, ctx context.Context, ef EntityFactory, sessionMaxAge int, sessionName string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, kind string, deleteAfterDuration time.Duration, clearOutDur time.Duration, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string) error {
 	ss := sessions.NewCookieStore([]byte(newAuthKey), []byte(newCryptKey), []byte(oldAuthKey), []byte(oldCryptKey))
 	ss.Options.HttpOnly = true
 	ss.Options.MaxAge = sessionMaxAge
-	es, err := newGaeStore(kind, ef, deleteAfterDuration, clearOutDur)
+	es, err := newGaeStore(kind, ctx, ef, deleteAfterDuration, clearOutDur)
 	if err != nil {
 		return err
 	}

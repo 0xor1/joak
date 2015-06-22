@@ -4,7 +4,6 @@ import(
 	`time`
 	`regexp`
 	`testing`
-	`github.com/0xor1/sus`
 	`github.com/gorilla/mux`
 	`github.com/stretchr/testify/assert`
 )
@@ -15,28 +14,28 @@ func Test_RouteLocalTest(t *testing.T){
 
 func Test_RouteGaeProd(t *testing.T){
 	dur, _ := time.ParseDuration(`10m`)
-	err := RouteGaeProd(mux.NewRouter(), nil, 300, `test`, &testEntity{}, nil, nil ,nil, `testEntity`, dur, dur, `6455d34dy2e1cx47`, `54a1e479w2eb3z4b`, ``, ``)
+	err := RouteGaeProd(mux.NewRouter(), nil, nil, 300, `test`, &testEntity{}, nil, nil ,nil, `testEntity`, dur, dur, `6455d34dy2e1cx47`, `54a1e479w2eb3z4b`, ``, ``)
 
 	assert.Nil(t, err, `err should be nil`)
 
-	err = RouteGaeProd(mux.NewRouter(), nil, 300, `test`, &testEntity{}, nil, nil ,nil, ``, dur, dur, `6455d34dy2e1cx47`, `54a1e479w2eb3z4b`, ``, ``)
+	err = RouteGaeProd(mux.NewRouter(), nil, nil, 300, `test`, &testEntity{}, nil, nil ,nil, ``, dur, dur, `6455d34dy2e1cx47`, `54a1e479w2eb3z4b`, ``, ``)
 
 	assert.Equal(t, `kind must not be an empty string`, err.Error(), `err should contain the appropriate message`)
 
 	dur, _ = time.ParseDuration(`0m`)
-	err = RouteGaeProd(mux.NewRouter(), nil, 300, `test`, &testEntity{}, nil, nil ,nil, `testEntity`, dur, dur, `6455d34dy2e1cx47`, `54a1e479w2eb3z4b`, ``, ``)
+	err = RouteGaeProd(mux.NewRouter(), nil, nil, 300, `test`, &testEntity{}, nil, nil ,nil, `testEntity`, dur, dur, `6455d34dy2e1cx47`, `54a1e479w2eb3z4b`, ``, ``)
 
 	assert.Equal(t, `deleteAfterDur must be a positive time.Duration`, err.Error(), `err should contain the appropriate message`)
 
 	dur2, _ := time.ParseDuration(`10m`)
-	err = RouteGaeProd(mux.NewRouter(), nil, 300, `test`, &testEntity{}, nil, nil ,nil, `testEntity`, dur2, dur, `6455d34dy2e1cx47`, `54a1e479w2eb3z4b`, ``, ``)
+	err = RouteGaeProd(mux.NewRouter(), nil,  nil, 300, `test`, &testEntity{}, nil, nil ,nil, `testEntity`, dur2, dur, `6455d34dy2e1cx47`, `54a1e479w2eb3z4b`, ``, ``)
 
 	assert.Equal(t, `clearOutDur must be a positive time.Duration`, err.Error(), `err should contain the appropriate message`)
 }
 
 func Test_Store(t *testing.T){
 	re := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-	store := newMemoryStore(func()Entity{return &testEntity{Version:sus.NewVersion()}})
+	store := newMemoryStore(func()Entity{return &testEntity{}})
 
 	id, e1, err := store.Create()
 
@@ -65,7 +64,19 @@ func Test_Store(t *testing.T){
 }
 
 type testEntity struct{
-	sus.Version
+	Version int `datastore:",noindex"`
+}
+
+func (te *testEntity) GetVersion() int {
+	return te.Version
+}
+
+func (te *testEntity) IncrementVersion() {
+	te.Version++
+}
+
+func (te *testEntity) DecrementVersion() {
+	te.Version--
 }
 
 func (te *testEntity) IsActive() bool {
