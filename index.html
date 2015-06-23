@@ -54,7 +54,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com\0xor1\joak\joak.go (38.7%)</option>
+				<option value="file0">github.com\0xor1\joak\joak.go (95.2%)</option>
 				
 				</select>
 			</div>
@@ -94,7 +94,7 @@ type Entity interface{
 
 type EntityFactory func()Entity
 
-func now() time.Time <span class="cov0" title="0">{
+func now() time.Time <span class="cov8" title="1">{
         return time.Now().UTC()
 }</span>
 
@@ -112,38 +112,38 @@ func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter
         <span class="cov8" title="1">var lastClearOut time.Time
         var mtx sync.Mutex
 
-        clearOut := func() </span><span class="cov0" title="0">{
+        clearOut := func() </span><span class="cov8" title="1">{
                 myLastClearOutInst := lastClearOut
-                if lastClearOut.IsZero() || time.Since(lastClearOut) &gt;= clearOutAfter </span><span class="cov0" title="0">{
+                if lastClearOut.IsZero() || time.Since(lastClearOut) &gt;= clearOutAfter </span><span class="cov8" title="1">{
                         mtx.Lock()
                         if lastClearOut != myLastClearOutInst </span><span class="cov0" title="0">{
                                 mtx.Unlock()
                                 return
                         }</span>
-                        <span class="cov0" title="0">lastClearOut = now()
+                        <span class="cov8" title="1">lastClearOut = now()
                         mtx.Unlock()
                         q := datastore.NewQuery(kind).Filter(`DeleteAfter &lt;=`, now()).KeysOnly()
                         keys := []*datastore.Key{}
-                        for iter := q.Run(ctx);; </span><span class="cov0" title="0">{
+                        for iter := q.Run(ctx);; </span><span class="cov8" title="1">{
                                 key, err := iter.Next(nil)
-                                if err == datastore.Done </span><span class="cov0" title="0">{
+                                if err == datastore.Done </span><span class="cov8" title="1">{
                                         break</span>
                                 }
-                                <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                                <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
                                         return
                                 }</span>
-                                <span class="cov0" title="0">keys = append(keys, key)</span>
+                                <span class="cov8" title="1">keys = append(keys, key)</span>
                         }
-                        <span class="cov0" title="0">nds.DeleteMulti(ctx, keys)</span>
+                        <span class="cov8" title="1">nds.DeleteMulti(ctx, keys)</span>
                 }
         }
 
-        <span class="cov8" title="1">return &amp;entityStore{deleteAfter, clearOut, gus.NewGaeStore(kind, ctx, sid.Uuid, func()sus.Version</span><span class="cov0" title="0">{return ef()}</span>)}, nil
+        <span class="cov8" title="1">return &amp;entityStore{deleteAfter, clearOut, gus.NewGaeStore(kind, ctx, sid.Uuid, func()sus.Version</span><span class="cov8" title="1">{return ef()}</span>)}, nil
 }
 
 func newMemoryStore(ef EntityFactory) oak.EntityStore <span class="cov8" title="1">{
         var deleteAfter time.Duration
-        return &amp;entityStore{deleteAfter, func()</span><span class="cov0" title="0">{}</span>, sus.NewJsonMemoryStore(sid.Uuid, func()sus.Version<span class="cov0" title="0">{return ef()}</span>)}
+        return &amp;entityStore{deleteAfter, func()</span><span class="cov8" title="1">{}</span>, sus.NewJsonMemoryStore(sid.Uuid, func()sus.Version<span class="cov8" title="1">{return ef()}</span>)}
 }
 
 type entityStore struct {
@@ -152,33 +152,33 @@ type entityStore struct {
         inner                 sus.Store
 }
 
-func (es *entityStore) Create() (string, oak.Entity, error) <span class="cov0" title="0">{
+func (es *entityStore) Create() (string, oak.Entity, error) <span class="cov8" title="1">{
         go es.clearOut()
         id, v, err := es.inner.Create()
         var e Entity
-        if err == nil &amp;&amp; v != nil </span><span class="cov0" title="0">{
+        if err == nil &amp;&amp; v != nil </span><span class="cov8" title="1">{
                 e = v.(Entity)
         }</span>
-        <span class="cov0" title="0">return id, e, err</span>
+        <span class="cov8" title="1">return id, e, err</span>
 }
 
-func (es *entityStore) Read(entityId string) (oak.Entity, error) <span class="cov0" title="0">{
+func (es *entityStore) Read(entityId string) (oak.Entity, error) <span class="cov8" title="1">{
         go es.clearOut()
         v, err := es.inner.Read(entityId)
         var e Entity
-        if err == nil &amp;&amp; v != nil </span><span class="cov0" title="0">{
+        if err == nil &amp;&amp; v != nil </span><span class="cov8" title="1">{
                 e = v.(Entity)
         }</span>
-        <span class="cov0" title="0">return e, err</span>
+        <span class="cov8" title="1">return e, err</span>
 }
 
-func (es *entityStore) Update(entityId string, entity oak.Entity) (error) <span class="cov0" title="0">{
+func (es *entityStore) Update(entityId string, entity oak.Entity) (error) <span class="cov8" title="1">{
         go es.clearOut()
         e, ok := entity.(Entity)
-        if ok </span><span class="cov0" title="0">{
+        if ok </span><span class="cov8" title="1">{
                 e.SetDeleteAfter(now().Add(es.deleteAfter))
         }</span>
-        <span class="cov0" title="0">return es.inner.Update(entityId, e)</span>
+        <span class="cov8" title="1">return es.inner.Update(entityId, e)</span>
 }
 
 func RouteLocalTest(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct)<span class="cov8" title="1">{
