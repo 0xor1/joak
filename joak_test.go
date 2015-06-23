@@ -82,9 +82,11 @@ func Test_GaeStore(t *testing.T){
 	assert.Nil(t, err, `err should be nil`)
 
 	id, e, err := s.Create()
+	te := e.(*testEntity)
 
 	assert.True(t, re.MatchString(id), `id should be a valid uuid`)
 	assert.Equal(t, 0, e.GetVersion(), `entity Version should be 0`)
+	assert.False(t, te.DeleteAfter.IsZero(), `entity DeleteAfter should have been initialised`)
 	assert.Nil(t, err, `err should be nil`)
 
 	err = s.Update(`not an id`, e)
@@ -107,7 +109,7 @@ func Test_GaeStore(t *testing.T){
 	assert.Equal(t, 1, e.GetVersion(), `entity Version should be 1`)
 	assert.Nil(t, err, `err should be nil`)
 
-	te := e.(*testEntity)
+	te = e.(*testEntity)
 	for {
 		if now().After(te.DeleteAfter) {
 			break
