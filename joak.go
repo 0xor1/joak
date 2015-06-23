@@ -68,7 +68,11 @@ func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter
 		}
 	}
 
-	return &entityStore{deleteAfter, clearOut, gus.NewGaeStore(kind, ctx, sid.Uuid, func()sus.Version{return ef()})}, nil
+	return &entityStore{deleteAfter, clearOut, gus.NewGaeStore(kind, ctx, sid.Uuid, func()sus.Version{
+		e := ef()
+		e.SetDeleteAfter(now().Add(deleteAfter))
+		return e
+	})}, nil
 }
 
 func newMemoryStore(ef EntityFactory) oak.EntityStore {
