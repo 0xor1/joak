@@ -115,21 +115,24 @@ func (es *entityStore) Update(entityId string, entity oak.Entity) (error) {
 	return es.inner.Update(entityId, e)
 }
 
-func RouteLocalTest(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct){
-	ss := sessions.NewCookieStore()
-	ss.Options.HttpOnly = false
-	ss.Options.MaxAge = sessionMaxAge
-	oak.Route(router, ss, sessionName, entity, newMemoryStore(ef), getJoinResp, getEntityChangeResp, performAct)
+func RouteLocalTest(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct){
+	sessionStore := initCookieSessionStore(sessionMaxAge, newAuthKey, newCryptKey, oldAuthKey, oldCryptKey)
+	oak.Route(router, sessionStore, sessionName, entity, newMemoryStore(ef), getJoinResp, getEntityChangeResp, performAct)
 }
 
-func RouteGaeProd(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, deleteAfter time.Duration, clearOutAfter time.Duration, kind string, ctx context.Context, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string) error {
-	ss := sessions.NewCookieStore([]byte(newAuthKey), []byte(newCryptKey), []byte(oldAuthKey), []byte(oldCryptKey))
-	ss.Options.HttpOnly = true
-	ss.Options.MaxAge = sessionMaxAge
+func RouteGaeProd(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, deleteAfter time.Duration, clearOutAfter time.Duration, kind string, ctx context.Context) error {
+	sessionStore := initCookieSessionStore(sessionMaxAge, newAuthKey, newCryptKey, oldAuthKey, oldCryptKey)
 	es, err := newGaeStore(kind, ctx, ef, deleteAfter, clearOutAfter)
 	if err != nil {
 		return err
 	}
-	oak.Route(router, ss, sessionName, entity, es, getJoinResp, getEntityChangeResp, performAct)
+	oak.Route(router, sessionStore, sessionName, entity, es, getJoinResp, getEntityChangeResp, performAct)
 	return nil
+}
+
+func initCookieSessionStore(sessionMaxAge int, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string) sessions.Store {
+	ss := sessions.NewCookieStore([]byte(newAuthKey), []byte(newCryptKey), []byte(oldAuthKey), []byte(oldCryptKey))
+	ss.Options.HttpOnly = true
+	ss.Options.MaxAge = sessionMaxAge
+	return ss
 }

@@ -14,7 +14,7 @@ import(
 )
 
 func Test_RouteLocalTest(t *testing.T){
-	RouteLocalTest(mux.NewRouter(), nil, 300, `test`, &testEntity{}, nil, nil, nil)
+	RouteLocalTest(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil)
 }
 
 func Test_RouteGaeProd(t *testing.T){
@@ -22,21 +22,21 @@ func Test_RouteGaeProd(t *testing.T){
 	ctx := appengine.NewContext(c.Request().(*http.Request))
 	dur1, _ := time.ParseDuration(`-1s`)
 
-	err := RouteGaeProd(mux.NewRouter(), nil, 300, `test`, &testEntity{}, nil, nil, nil, dur1, dur1, ``, ctx, ``, ``, ``, ``)
+	err := RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur1, dur1, ``, ctx)
 
 	assert.Equal(t, `kind must not be an empty string`, err.Error(), `err should contain appropriate message`)
 
-	err = RouteGaeProd(mux.NewRouter(), nil, 300, `test`, &testEntity{}, nil, nil, nil, dur1, dur1, `test`, ctx, ``, ``, ``, ``)
+	err = RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur1, dur1, `test`, ctx)
 
 	assert.Equal(t, `deleteAfter must be a positive time.Duration`, err.Error(), `err should contain appropriate message`)
 
 	dur2, _ := time.ParseDuration(`1s`)
 
-	err = RouteGaeProd(mux.NewRouter(), nil, 300, `test`, &testEntity{}, nil, nil, nil, dur2, dur1, `test`, ctx, ``, ``, ``, ``)
+	err = RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur2, dur1, `test`, ctx)
 
 	assert.Equal(t, `clearOutAfter must be a positive time.Duration`, err.Error(), `err should contain appropriate message`)
 
-	err = RouteGaeProd(mux.NewRouter(), nil, 300, `test`, &testEntity{}, nil, nil, nil, dur2, dur2, `test`, ctx, ``, ``, ``, ``)
+	err = RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur2, dur2, `test`, ctx)
 
 	assert.Nil(t, err, `err should contain appropriate message`)
 }
