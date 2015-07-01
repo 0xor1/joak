@@ -54,7 +54,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com\0xor1\joak\joak.go (95.5%)</option>
+				<option value="file0">github.com\0xor1\joak\joak.go (95.4%)</option>
 				
 				</select>
 			</div>
@@ -86,6 +86,11 @@ import(
         `google.golang.org/appengine/datastore`
 )
 
+var(
+        kindToLastClearOutMap = map[string]time.Time{}
+        mtx sync.Mutex
+)
+
 type Entity interface{
         oak.Entity
         IncrementVersion()
@@ -103,18 +108,15 @@ func now() time.Time <span class="cov8" title="1">{
 
 func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter time.Duration, clearOutAfter time.Duration) (oak.EntityStore) <span class="cov8" title="1">{
 
-        var lastClearOut time.Time
-        var mtx sync.Mutex
-
         clearOut := func() </span><span class="cov8" title="1">{
-                myLastClearOutInst := lastClearOut
-                if lastClearOut.IsZero() || time.Since(lastClearOut) &gt;= clearOutAfter </span><span class="cov8" title="1">{
-                        mtx.Lock()
-                        if lastClearOut != myLastClearOutInst </span><span class="cov0" title="0">{
+                mtx.Lock()
+                myLastClearOutInst := kindToLastClearOutMap[kind]
+                if kindToLastClearOutMap[kind].IsZero() || time.Since(kindToLastClearOutMap[kind]) &gt;= clearOutAfter </span><span class="cov8" title="1">{
+                        if kindToLastClearOutMap[kind] != myLastClearOutInst </span><span class="cov0" title="0">{
                                 mtx.Unlock()
                                 return
                         }</span>
-                        <span class="cov8" title="1">lastClearOut = now()
+                        <span class="cov8" title="1">kindToLastClearOutMap[kind] = now()
                         mtx.Unlock()
                         q := datastore.NewQuery(kind).Filter(`DeleteAfter &lt;=`, now()).KeysOnly()
                         keys := []*datastore.Key{}
@@ -129,7 +131,9 @@ func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter
                                 <span class="cov8" title="1">keys = append(keys, key)</span>
                         }
                         <span class="cov8" title="1">nds.DeleteMulti(ctx, keys)</span>
-                }
+                }<span class="cov8" title="1"> else {
+                        mtx.Unlock()
+                }</span>
         }
 
         <span class="cov8" title="1">return &amp;entityStore{deleteAfter, clearOut, gus.NewGaeStore(kind, ctx, sid.Uuid, func()sus.Version</span><span class="cov8" title="1">{

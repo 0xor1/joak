@@ -16,6 +16,11 @@ import(
 	`google.golang.org/appengine/datastore`
 )
 
+var(
+	kindToLastClearOutMap = map[string]time.Time{}
+	mtx sync.Mutex
+)
+
 type Entity interface{
 	oak.Entity
 	IncrementVersion()
@@ -33,18 +38,15 @@ func now() time.Time {
 
 func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter time.Duration, clearOutAfter time.Duration) (oak.EntityStore) {
 
-	var lastClearOut time.Time
-	var mtx sync.Mutex
-
 	clearOut := func() {
-		myLastClearOutInst := lastClearOut
-		if lastClearOut.IsZero() || time.Since(lastClearOut) >= clearOutAfter {
-			mtx.Lock()
-			if lastClearOut != myLastClearOutInst {
+		mtx.Lock()
+		myLastClearOutInst := kindToLastClearOutMap[kind]
+		if kindToLastClearOutMap[kind].IsZero() || time.Since(kindToLastClearOutMap[kind]) >= clearOutAfter {
+			if kindToLastClearOutMap[kind] != myLastClearOutInst {
 				mtx.Unlock()
 				return
 			}
-			lastClearOut = now()
+			kindToLastClearOutMap[kind] = now()
 			mtx.Unlock()
 			q := datastore.NewQuery(kind).Filter(`DeleteAfter <=`, now()).KeysOnly()
 			keys := []*datastore.Key{}
@@ -59,6 +61,8 @@ func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter
 				keys = append(keys, key)
 			}
 			nds.DeleteMulti(ctx, keys)
+		} else {
+			mtx.Unlock()
 		}
 	}
 
