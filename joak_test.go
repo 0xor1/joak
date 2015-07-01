@@ -1,11 +1,11 @@
 package joak
 
 import(
-	//`log`
 	`time`
 	`regexp`
 	`testing`
 	`net/http`
+	`net/http/httptest`
 	`appengine/aetest`
 	`github.com/gorilla/mux`
 	`golang.org/x/net/context`
@@ -15,6 +15,15 @@ import(
 
 func Test_RouteLocalTest(t *testing.T){
 	RouteLocalTest(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil)
+}
+
+func Test_RouteLocalTest_EntityStoreFactory(t *testing.T){
+	router := mux.NewRouter()
+	RouteLocalTest(router, func()Entity{return &testEntity{}}, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil)
+	w := httptest.NewRecorder()
+	r, _ := http.NewRequest(`POST`, `/create`, nil)
+
+	router.ServeHTTP(w, r)
 }
 
 func Test_RouteGaeProd(t *testing.T){
@@ -38,7 +47,19 @@ func Test_RouteGaeProd(t *testing.T){
 
 	err = RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur2, dur2, `test`, ctxFactory)
 
-	assert.Nil(t, err, `err should contain appropriate message`)
+	assert.Nil(t, err, `err should be nil`)
+}
+
+func Test_RouteGaeProd_EntityStoreFactory(t *testing.T){
+	c, _ := aetest.NewContext(nil)
+	ctxFactory := func(r *http.Request)context.Context{return appengine.NewContext(c.Request().(*http.Request))}
+	dur, _ := time.ParseDuration(`1s`)
+	router := mux.NewRouter()
+	RouteGaeProd(router, func()Entity{return &testEntity{}}, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur, dur, `test`, ctxFactory)
+	w := httptest.NewRecorder()
+	r, _ := http.NewRequest(`POST`, `/create`, nil)
+
+	router.ServeHTTP(w, r)
 }
 
 func Test_MemoryStore(t *testing.T){

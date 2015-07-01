@@ -26,7 +26,7 @@ github.com\0xor1\joak\joak.go:103.75,106.8 3 1
 github.com\0xor1\joak\joak.go:109.2,109.37 1 1
 github.com\0xor1\joak\joak.go:106.8,108.3 1 1
 github.com\0xor1\joak\joak.go:112.291,115.91 3 1
-github.com\0xor1\joak\joak.go:115.91,115.108 1 0
+github.com\0xor1\joak\joak.go:115.91,115.108 1 1
 github.com\0xor1\joak\joak.go:118.392,119.16 1 1
 github.com\0xor1\joak\joak.go:122.2,122.32 1 1
 github.com\0xor1\joak\joak.go:125.2,125.34 1 1
@@ -35,5 +35,5 @@ github.com\0xor1\joak\joak.go:134.2,135.12 2 1
 github.com\0xor1\joak\joak.go:119.16,121.3 1 1
 github.com\0xor1\joak\joak.go:122.32,124.3 1 1
 github.com\0xor1\joak\joak.go:125.34,127.3 1 1
-github.com\0xor1\joak\joak.go:130.60,133.3 2 0
+github.com\0xor1\joak\joak.go:130.60,133.3 2 1
 github.com\0xor1\joak\joak.go:138.141,143.2 4 1
