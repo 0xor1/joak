@@ -14,7 +14,7 @@ func Test_MemoryStore_Create(t *testing.T){
 
 	assert.NotEqual(t, ``, id1, `id1 should be a non empty string`)
 	assert.NotNil(t, f1, `f1 should not be nil`)
-	assert.Equal(t, 0, f1.getVersion(), `f1's version should be 0`)
+	assert.Equal(t, 0, f1.GetVersion(), `f1's version should be 0`)
 	assert.Nil(t, err1, `err1 should be nil`)
 
 	id2, f2, err2 := fms.Create()
@@ -22,7 +22,7 @@ func Test_MemoryStore_Create(t *testing.T){
 	assert.NotEqual(t, ``, id2, `id2 should be a non empty string`)
 	assert.NotEqual(t, id1, id2, `id2 should not be id1`)
 	assert.NotNil(t, f2, `f2 should not be nil`)
-	assert.Equal(t, 0, f2.getVersion(), `f2's version should be 0`)
+	assert.Equal(t, 0, f2.GetVersion(), `f2's version should be 0`)
 	assert.True(t, f2 != f1, `f2 should not be f1`)
 	assert.Nil(t, err2, `err2 should be nil`)
 }
@@ -44,7 +44,7 @@ func Test_MemoryStore_Read_success(t *testing.T){
 
 	assert.NotEqual(t, ``, id, `id should be a non empty string`)
 	assert.NotNil(t, f1, `f1 should not be nil`)
-	assert.Equal(t, 0, f1.getVersion(), `f1's version should be 0`)
+	assert.Equal(t, 0, f1.GetVersion(), `f1's version should be 0`)
 	assert.Nil(t, err1, `err1 should be nil`)
 
 	f2, err2 := fms.Read(id)
@@ -78,7 +78,7 @@ func Test_MemoryStore_Update_success(t *testing.T){
 
 	err = fms.Update(id, f)
 
-	assert.Equal(t, 1, f.getVersion(), `f's version should be 1`)
+	assert.Equal(t, 1, f.GetVersion(), `f's version should be 1`)
 	assert.Nil(t, err, `err should be nil`)
 }
 
@@ -95,13 +95,13 @@ func Test_MemoryStore_Update_NonsequentialUpdate_failure(t *testing.T){
 	fms := newFooMemoryStore(nil, nil)
 	id1, f1, _ := fms.Create()
 	id2, f2, _ := fms.Create()
-	f2.incrementVersion()
-	expectedVersion := f1.getVersion()
+	f2.IncrementVersion()
+	expectedVersion := f1.GetVersion()
 
 	err := fms.UpdateMulti([]string{id1, id2}, []*foo{f1, f2})
 
 	assert.Equal(t, `nonsequential update for entity with id "`+id2+`"`, err.Error(), `err should contain expected msg`)
-	assert.Equal(t, expectedVersion, f1.getVersion(), `f1's version should be unchaged`)
+	assert.Equal(t, expectedVersion, f1.GetVersion(), `f1's version should be unchaged`)
 }
 
 func Test_MemoryStore_UpdateMulti_IdCountNotEqualToEntityCount_failure(t *testing.T){
@@ -168,7 +168,19 @@ var(
 )
 
 type foo struct{
-	Version	`json:"version"`
+	Version	int `json:"version"`
+}
+
+func (f *foo) GetVersion() int {
+	return f.Version
+}
+
+func (f *foo) IncrementVersion() {
+	f.Version++
+}
+
+func (f *foo) DecrementVersion() {
+	f.Version--
 }
 
 func newFooMemoryStore(m Marshaler, un Unmarshaler) *fooMemoryStore {
@@ -179,7 +191,7 @@ func newFooMemoryStore(m Marshaler, un Unmarshaler) *fooMemoryStore {
 		return fmt.Sprintf(`%d`, idSrc)
 	}
 	vf := func() Version {
-		return &foo{NewVersion()}
+		return &foo{}
 	}
 	if(m == nil) {
 		inner = NewJsonMemoryStore(idf, vf)

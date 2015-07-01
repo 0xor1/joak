@@ -31,6 +31,8 @@ type EntityStore interface{
 	Update(entityId string, entity Entity) (err error)
 }
 
+type EntityStoreFactory func(r *http.Request) EntityStore
+
 type Entity interface {
 	GetVersion() int
 	IsActive() bool
@@ -44,7 +46,7 @@ type GetJoinResp func(userId string, e Entity) Json
 type GetEntityChangeResp func(userId string, e Entity) Json
 type PerformAct func(json Json, userId string, e Entity) (err error)
 
-func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, entity Entity, entityStore EntityStore, getJoinResp GetJoinResp, getEntityChangeResp GetEntityChangeResp, performAct PerformAct){
+func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, entity Entity, entityStoreFactory EntityStoreFactory, getJoinResp GetJoinResp, getEntityChangeResp GetEntityChangeResp, performAct PerformAct){
 	gob.Register(entity)
 
 	getSession := func(w http.ResponseWriter, r *http.Request) (*session, error) {
@@ -80,7 +82,7 @@ func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, 
 		return session, err
 	}
 
-	fetchEntity := func(entityId string) (entity Entity, err error) {
+	fetchEntity := func(entityId string, entityStore EntityStore) (entity Entity, err error) {
 		retryCount := 0
 		for {
 			entity, err = entityStore.Read(entityId)
@@ -102,6 +104,7 @@ func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, 
 	create := func(w http.ResponseWriter, r *http.Request){
 		s, _ := getSession(w, r)
 		if s.isNotEngaged() {
+			entityStore := entityStoreFactory(r)
 			entityId, entity, err := entityStore.Create()
 			if err != nil {
 				writeError(w, err)
@@ -119,7 +122,8 @@ func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, 
 			return
 		}
 
-		entity, err := fetchEntity(entityId)
+		entityStore := entityStoreFactory(r)
+		entity, err := fetchEntity(entityId, entityStore)
 		if err != nil {
 			writeError(w, err)
 			return
@@ -147,7 +151,8 @@ func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, 
 			return
 		}
 
-		entity, err := fetchEntity(entityId)
+		entityStore := entityStoreFactory(r)
+		entity, err := fetchEntity(entityId, entityStore)
 		if err != nil {
 			writeError(w, err)
 			return
@@ -188,8 +193,9 @@ func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, 
 			return
 		}
 
+		entityStore := entityStoreFactory(r)
 		entityId := s.getEntityId()
-		entity, err := fetchEntity(entityId)
+		entity, err := fetchEntity(entityId, entityStore)
 		if err != nil {
 			writeError(w, err)
 			return
@@ -230,6 +236,7 @@ func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, 
 			return
 		}
 
+		entityStore := entityStoreFactory(r)
 		entity, err := entityStore.Read(entityId)
 		if err != nil {
 			writeError(w, err)

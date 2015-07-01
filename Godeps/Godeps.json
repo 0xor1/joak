@@ -8,16 +8,20 @@
 			"Rev": "35bc42037350f0078e3c974c6ea690f1926603ab"
 		},
 		{
+			"ImportPath": "github.com/0xor1/gus",
+			"Rev": "0d4a2d9832d78b9e5cd66d589bb63beed2f1f478"
+		},
+		{
 			"ImportPath": "github.com/0xor1/oak",
-			"Rev": "e7a861ff7e40bc44b798f5e167758717394699d3"
+			"Rev": "ee5077378c3d31bdf4d00375fa35f7ffd591e639"
 		},
 		{
 			"ImportPath": "github.com/0xor1/sid",
-			"Rev": "66470a3cc0630bf2cc49a40c984d545861092c5a"
+			"Rev": "7fd0d753bc9195a05c807466322a3448e1433a74"
 		},
 		{
 			"ImportPath": "github.com/0xor1/sus",
-			"Rev": "0d9b5b2e5dce93ee6f49ee98643c5d40cb8b1618"
+			"Rev": "8494b155702daa1008b8e75aca5767c73c01f338"
 		},
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",
@@ -41,7 +45,7 @@
 		},
 		{
 			"ImportPath": "github.com/qedus/nds",
-			"Rev": "d2403ec8f0f07e332022f239f1289665b1c002b0"
+			"Rev": "61052b4c9e6babb68b0a040de842a27cb6d36763"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",

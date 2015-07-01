@@ -12,33 +12,8 @@ import(
 // The interface that struct entities must include as anonymous fields in order to be used with sus stores.
 type Version interface{
 	GetVersion() int
-	getVersion() int
-	incrementVersion()
-	decrementVersion()
-}
-
-// The constructor to initialise the anonymous Version fields in struct entities.
-func NewVersion() Version {
-	vi := version(0)
-	return &vi
-}
-
-type version int
-
-func (vi *version) GetVersion() int{
-	return int(*vi)
-}
-
-func (vi *version) getVersion() int{
-	return int(*vi)
-}
-
-func (vi *version) incrementVersion() {
-	*vi += 1
-}
-
-func (vi *version) decrementVersion() {
-	*vi -= 1
+	IncrementVersion()
+	DecrementVersion()
 }
 
 // The core sus interface.
@@ -156,16 +131,16 @@ func (s *store) UpdateMulti(ids []string, vs []Version) (err error) {
 		} else {
 			reverseI := 0
 			for i := 0; i < count; i++ {
-				if oldVs[i].getVersion() != vs[i].getVersion() {
+				if oldVs[i].GetVersion() != vs[i].GetVersion() {
 					err = &nonsequentialUpdateError{ids[i]}
 					reverseI = i
 					break;
 				}
-				vs[i].incrementVersion()
+				vs[i].IncrementVersion()
 			}
 			if err != nil {
 				for i := 0; i < reverseI; i++ {
-					vs[i].decrementVersion()
+					vs[i].DecrementVersion()
 				}
 			} else {
 				err = s.putMulti(ids, vs)

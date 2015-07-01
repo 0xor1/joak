@@ -101,6 +101,8 @@ type EntityStore interface{
         Update(entityId string, entity Entity) (err error)
 }
 
+type EntityStoreFactory func(r *http.Request) EntityStore
+
 type Entity interface {
         GetVersion() int
         IsActive() bool
@@ -114,7 +116,7 @@ type GetJoinResp func(userId string, e Entity) Json
 type GetEntityChangeResp func(userId string, e Entity) Json
 type PerformAct func(json Json, userId string, e Entity) (err error)
 
-func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, entity Entity, entityStore EntityStore, getJoinResp GetJoinResp, getEntityChangeResp GetEntityChangeResp, performAct PerformAct)<span class="cov8" title="1">{
+func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, entity Entity, entityStoreFactory EntityStoreFactory, getJoinResp GetJoinResp, getEntityChangeResp GetEntityChangeResp, performAct PerformAct)<span class="cov8" title="1">{
         gob.Register(entity)
 
         getSession := func(w http.ResponseWriter, r *http.Request) (*session, error) </span><span class="cov8" title="1">{
@@ -150,7 +152,7 @@ func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, 
                 <span class="cov8" title="1">return session, err</span>
         }
 
-        <span class="cov8" title="1">fetchEntity := func(entityId string) (entity Entity, err error) </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">fetchEntity := func(entityId string, entityStore EntityStore) (entity Entity, err error) </span><span class="cov8" title="1">{
                 retryCount := 0
                 for </span><span class="cov8" title="1">{
                         entity, err = entityStore.Read(entityId)
@@ -172,6 +174,7 @@ func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, 
         <span class="cov8" title="1">create := func(w http.ResponseWriter, r *http.Request)</span><span class="cov8" title="1">{
                 s, _ := getSession(w, r)
                 if s.isNotEngaged() </span><span class="cov8" title="1">{
+                        entityStore := entityStoreFactory(r)
                         entityId, entity, err := entityStore.Create()
                         if err != nil </span><span class="cov8" title="1">{
                                 writeError(w, err)
@@ -189,7 +192,8 @@ func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, 
                         return
                 }</span>
 
-                <span class="cov8" title="1">entity, err := fetchEntity(entityId)
+                <span class="cov8" title="1">entityStore := entityStoreFactory(r)
+                entity, err := fetchEntity(entityId, entityStore)
                 if err != nil </span><span class="cov8" title="1">{
                         writeError(w, err)
                         return
@@ -217,7 +221,8 @@ func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, 
                         return
                 }</span>
 
-                <span class="cov8" title="1">entity, err := fetchEntity(entityId)
+                <span class="cov8" title="1">entityStore := entityStoreFactory(r)
+                entity, err := fetchEntity(entityId, entityStore)
                 if err != nil </span><span class="cov8" title="1">{
                         writeError(w, err)
                         return
@@ -258,8 +263,9 @@ func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, 
                         return
                 }</span>
 
-                <span class="cov8" title="1">entityId := s.getEntityId()
-                entity, err := fetchEntity(entityId)
+                <span class="cov8" title="1">entityStore := entityStoreFactory(r)
+                entityId := s.getEntityId()
+                entity, err := fetchEntity(entityId, entityStore)
                 if err != nil </span><span class="cov8" title="1">{
                         writeError(w, err)
                         return
@@ -300,7 +306,8 @@ func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, 
                         return
                 }</span>
 
-                <span class="cov8" title="1">entity, err := entityStore.Read(entityId)
+                <span class="cov8" title="1">entityStore := entityStoreFactory(r)
+                entity, err := entityStore.Read(entityId)
                 if err != nil </span><span class="cov8" title="1">{
                         writeError(w, err)
                         return

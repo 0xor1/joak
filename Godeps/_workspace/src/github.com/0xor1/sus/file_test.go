@@ -25,7 +25,7 @@ func Test_FileStore_Create(t *testing.T){
 
 	assert.NotEqual(t, ``, id1, `id1 should be a non empty string`)
 	assert.NotNil(t, f1, `f1 should not be nil`)
-	assert.Equal(t, 0, f1.getVersion(), `f1's version should be 0`)
+	assert.Equal(t, 0, f1.GetVersion(), `f1's version should be 0`)
 	assert.Nil(t, err1, `err1 should be nil`)
 
 	id2, f2, err2 := ffs.Create()
@@ -33,7 +33,7 @@ func Test_FileStore_Create(t *testing.T){
 	assert.NotEqual(t, ``, id2, `id2 should be a non empty string`)
 	assert.NotEqual(t, id1, id2, `id2 should not be id1`)
 	assert.NotNil(t, f2, `f2 should not be nil`)
-	assert.Equal(t, 0, f2.getVersion(), `f2's version should be 0`)
+	assert.Equal(t, 0, f2.GetVersion(), `f2's version should be 0`)
 	assert.True(t, f2 != f1, `f2 should not be f1`)
 	assert.Nil(t, err2, `err2 should be nil`)
 	os.RemoveAll(_TEST_DIR)
@@ -56,7 +56,7 @@ func Test_FileStore_Read_success(t *testing.T){
 
 	assert.NotEqual(t, ``, id, `id should be a non empty string`)
 	assert.NotNil(t, f1, `f1 should not be nil`)
-	assert.Equal(t, 0, f1.getVersion(), `f1's version should be 0`)
+	assert.Equal(t, 0, f1.GetVersion(), `f1's version should be 0`)
 	assert.Nil(t, err1, `err1 should be nil`)
 
 	f2, err2 := ffs.Read(id)
@@ -92,7 +92,7 @@ func Test_FileStore_Update_success(t *testing.T){
 
 	err = ffs.Update(id, f)
 
-	assert.Equal(t, 1, f.getVersion(), `f's version should be 1`)
+	assert.Equal(t, 1, f.GetVersion(), `f's version should be 1`)
 	assert.Nil(t, err, `err should be nil`)
 	os.RemoveAll(_TEST_DIR)
 }
@@ -111,13 +111,13 @@ func Test_FileStore_Update_NonsequentialUpdate_failure(t *testing.T){
 	ffs, _ := newFooFileStore(_TEST_DIR, ``, nil, nil)
 	id1, f1, _ := ffs.Create()
 	id2, f2, _ := ffs.Create()
-	f2.incrementVersion()
-	expectedVersion := f1.getVersion()
+	f2.IncrementVersion()
+	expectedVersion := f1.GetVersion()
 
 	err := ffs.UpdateMulti([]string{id1, id2}, []*foo{f1, f2})
 
 	assert.Equal(t, `nonsequential update for entity with id "`+id2+`"`, err.Error(), `err should contain expected msg`)
-	assert.Equal(t, expectedVersion, f1.getVersion(), `f1's version should be unchaged`)
+	assert.Equal(t, expectedVersion, f1.GetVersion(), `f1's version should be unchaged`)
 	os.RemoveAll(_TEST_DIR)
 }
 
@@ -189,7 +189,7 @@ func newFooFileStore(dir string, fileExt string, m Marshaler, un Unmarshaler) (*
 		return fmt.Sprintf(`%d`, idSrc)
 	}
 	vf := func() Version {
-		return &foo{NewVersion()}
+		return &foo{}
 	}
 	if(m == nil) {
 		inner, err = NewJsonFileStore(dir, idf, vf)

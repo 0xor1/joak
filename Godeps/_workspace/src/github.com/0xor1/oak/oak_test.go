@@ -494,7 +494,7 @@ func setup(gjr GetJoinResp, gecr GetEntityChangeResp, pa PerformAct, path string
 	tss = &testSessionStore{}
 	tes = &testEntityStore{}
 	tr = mux.NewRouter()
-	Route(tr, tss, `test_session`, &testEntity{}, tes, gjr, gecr, pa)
+	Route(tr, tss, `test_session`, &testEntity{}, func(r *http.Request)EntityStore{return tes}, gjr, gecr, pa)
 	w := httptest.NewRecorder()
 	var r *http.Request
 	if reqJson != `` {

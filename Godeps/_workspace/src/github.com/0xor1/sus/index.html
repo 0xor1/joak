@@ -56,13 +56,11 @@
 				
 				<option value="file0">github.com\0xor1\sus\file.go (100.0%)</option>
 				
-				<option value="file1">github.com\0xor1\sus\gae.go (0.0%)</option>
+				<option value="file1">github.com\0xor1\sus\memory.go (100.0%)</option>
 				
-				<option value="file2">github.com\0xor1\sus\memory.go (100.0%)</option>
+				<option value="file2">github.com\0xor1\sus\mutex_byte.go (100.0%)</option>
 				
-				<option value="file3">github.com\0xor1\sus\mutex_byte.go (100.0%)</option>
-				
-				<option value="file4">github.com\0xor1\sus\sus.go (100.0%)</option>
+				<option value="file3">github.com\0xor1\sus\sus.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -130,75 +128,6 @@ func NewFileStore(storeDir string, fileExt string, m Marshaler, un Unmarshaler, 
 		<pre class="file" id="file1" style="display: none">package sus
 
 import(
-        `sync`
-        `github.com/qedus/nds`
-        `golang.org/x/net/context`
-        `google.golang.org/appengine/datastore`
-)
-
-// Creates and configures a store that stores entities in Google AppEngines memcache and datastore.
-// github.com/qedus/nds is used for strongly consistent automatic caching.
-func NewGaeStore(kind string, idf IdFactory, vf VersionFactory) Store <span class="cov0" title="0">{
-        var tranCtx context.Context
-        var mtx sync.Mutex
-
-        getKey := func(ctx context.Context, id string) *datastore.Key </span><span class="cov0" title="0">{
-                return datastore.NewKey(ctx, kind, id, 0, nil)
-        }</span>
-
-        <span class="cov0" title="0">getMulti := func(ids []string) (vs []Version, err error) </span><span class="cov0" title="0">{
-                count := len(ids)
-                vs = make([]Version, count, count)
-                ks := make([]*datastore.Key, count, count)
-                for i := 0; i &lt; count; i++ </span><span class="cov0" title="0">{
-                        vs[i] = vf()
-                        ks[i] = getKey(tranCtx, ids[i])
-                }</span>
-                <span class="cov0" title="0">err = nds.GetMulti(tranCtx, ks, vs)
-                return</span>
-        }
-
-        <span class="cov0" title="0">putMulti := func(ids []string, vs []Version) (err error) </span><span class="cov0" title="0">{
-                count := len(ids)
-                ks := make([]*datastore.Key, count, count)
-                for i := 0; i &lt; count; i++ </span><span class="cov0" title="0">{
-                        ks[i] = getKey(tranCtx, ids[i])
-                }</span>
-                <span class="cov0" title="0">_, err = nds.PutMulti(tranCtx, ks, vs)
-                return</span>
-        }
-
-        <span class="cov0" title="0">delMulti := func(ids []string) error </span><span class="cov0" title="0">{
-                count := len(ids)
-                ks := make([]*datastore.Key, count, count)
-                for i := 0; i &lt; count; i++ </span><span class="cov0" title="0">{
-                        ks[i] = getKey(tranCtx, ids[i])
-                }</span>
-                <span class="cov0" title="0">return nds.DeleteMulti(tranCtx, ks)</span>
-        }
-
-        <span class="cov0" title="0">isNonExtantError := func(err error) bool </span><span class="cov0" title="0">{
-                return err == datastore.ErrNoSuchEntity
-        }</span>
-
-        <span class="cov0" title="0">rit := func(tran Transaction) error </span><span class="cov0" title="0">{
-                return nds.RunInTransaction(context.Background(), func(ctx context.Context)error</span><span class="cov0" title="0">{
-                        mtx.Lock()
-                        defer func()</span><span class="cov0" title="0">{
-                                tranCtx = nil
-                                mtx.Unlock()
-                        }</span>()
-                        <span class="cov0" title="0">tranCtx = ctx
-                        return tran()</span>
-                }, &amp;datastore.TransactionOptions{XG:true})
-        }
-
-        <span class="cov0" title="0">return NewStore(getMulti, putMulti, delMulti, idf, vf, isNonExtantError,rit)</span>
-}</pre>
-		
-		<pre class="file" id="file2" style="display: none">package sus
-
-import(
         `encoding/json`
 )
 
@@ -246,7 +175,7 @@ func NewMemoryStore(m Marshaler, un Unmarshaler, idf IdFactory, vf VersionFactor
         <span class="cov8" title="1">return NewMutexByteStore(get, put, del, m, un, idf, vf, isNonExtantError)</span>
 }</pre>
 		
-		<pre class="file" id="file3" style="display: none">package sus
+		<pre class="file" id="file2" style="display: none">package sus
 
 import(
         `sync`
@@ -326,7 +255,7 @@ func (e localEntityDoesNotExistError) Error() string<span class="cov8" title="1"
         return `entity with id "`+e.id+`" does not exist`
 }</pre>
 		
-		<pre class="file" id="file4" style="display: none">/*
+		<pre class="file" id="file3" style="display: none">/*
 Package sus provides data storage for entities that require sequential updates.
 Any type of datastore can be created in the same manner as those available by default
 in sus, Memory/File/AppEngine.
@@ -340,34 +269,9 @@ import(
 // The interface that struct entities must include as anonymous fields in order to be used with sus stores.
 type Version interface{
         GetVersion() int
-        getVersion() int
-        incrementVersion()
-        decrementVersion()
+        IncrementVersion()
+        DecrementVersion()
 }
-
-// The constructor to initialise the anonymous Version fields in struct entities.
-func NewVersion() Version <span class="cov8" title="1">{
-        vi := version(0)
-        return &amp;vi
-}</span>
-
-type version int
-
-func (vi *version) GetVersion() int<span class="cov8" title="1">{
-        return int(*vi)
-}</span>
-
-func (vi *version) getVersion() int<span class="cov8" title="1">{
-        return int(*vi)
-}</span>
-
-func (vi *version) incrementVersion() <span class="cov8" title="1">{
-        *vi += 1
-}</span>
-
-func (vi *version) decrementVersion() <span class="cov8" title="1">{
-        *vi -= 1
-}</span>
 
 // The core sus interface.
 type Store interface{
@@ -484,16 +388,16 @@ func (s *store) UpdateMulti(ids []string, vs []Version) (err error) <span class=
                 }<span class="cov8" title="1"> else {
                         reverseI := 0
                         for i := 0; i &lt; count; i++ </span><span class="cov8" title="1">{
-                                if oldVs[i].getVersion() != vs[i].getVersion() </span><span class="cov8" title="1">{
+                                if oldVs[i].GetVersion() != vs[i].GetVersion() </span><span class="cov8" title="1">{
                                         err = &amp;nonsequentialUpdateError{ids[i]}
                                         reverseI = i
                                         break</span>;
                                 }
-                                <span class="cov8" title="1">vs[i].incrementVersion()</span>
+                                <span class="cov8" title="1">vs[i].IncrementVersion()</span>
                         }
                         <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
                                 for i := 0; i &lt; reverseI; i++ </span><span class="cov8" title="1">{
-                                        vs[i].decrementVersion()
+                                        vs[i].DecrementVersion()
                                 }</span>
                         }<span class="cov8" title="1"> else {
                                 err = s.putMulti(ids, vs)
