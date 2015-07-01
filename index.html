@@ -54,7 +54,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com\0xor1\joak\joak.go (95.3%)</option>
+				<option value="file0">github.com\0xor1\joak\joak.go (90.9%)</option>
 				
 				</select>
 			</div>
@@ -74,6 +74,7 @@ import(
         `time`
         `sync`
         `errors`
+        `net/http`
         `github.com/0xor1/oak`
         `github.com/0xor1/sus`
         `github.com/0xor1/gus`
@@ -92,24 +93,17 @@ type Entity interface{
         SetDeleteAfter(time.Time)
 }
 
+type ContextFactory func(r *http.Request) context.Context
+
 type EntityFactory func()Entity
 
 func now() time.Time <span class="cov8" title="1">{
         return time.Now().UTC()
 }</span>
 
-func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter time.Duration, clearOutAfter time.Duration) (oak.EntityStore, error) <span class="cov8" title="1">{
-        if kind == `` </span><span class="cov8" title="1">{
-                return nil, errors.New(`kind must not be an empty string`)
-        }</span>
-        <span class="cov8" title="1">if deleteAfter.Seconds() &lt;= 0 </span><span class="cov8" title="1">{
-                return nil, errors.New(`deleteAfter must be a positive time.Duration`)
-        }</span>
-        <span class="cov8" title="1">if clearOutAfter.Seconds() &lt;= 0 </span><span class="cov8" title="1">{
-                return nil, errors.New(`clearOutAfter must be a positive time.Duration`)
-        }</span>
+func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter time.Duration, clearOutAfter time.Duration) (oak.EntityStore) <span class="cov8" title="1">{
 
-        <span class="cov8" title="1">var lastClearOut time.Time
+        var lastClearOut time.Time
         var mtx sync.Mutex
 
         clearOut := func() </span><span class="cov8" title="1">{
@@ -142,7 +136,7 @@ func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter
                 e := ef()
                 e.SetDeleteAfter(now().Add(deleteAfter))
                 return e
-        }</span>)}, nil
+        }</span>)}
 }
 
 func newMemoryStore(ef EntityFactory) oak.EntityStore <span class="cov8" title="1">{
@@ -185,23 +179,37 @@ func (es *entityStore) Update(entityId string, entity oak.Entity) (error) <span 
         <span class="cov8" title="1">return es.inner.Update(entityId, e)</span>
 }
 
-func RouteLocalTest(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct)<span class="cov8" title="1">{
-        ss := sessions.NewCookieStore()
-        ss.Options.HttpOnly = false
-        ss.Options.MaxAge = sessionMaxAge
-        oak.Route(router, ss, sessionName, entity, newMemoryStore(ef), getJoinResp, getEntityChangeResp, performAct)
-}</span>
+func RouteLocalTest(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct)<span class="cov8" title="1">{
+        sessionStore := initCookieSessionStore(sessionMaxAge, newAuthKey, newCryptKey, oldAuthKey, oldCryptKey)
+        memStore := newMemoryStore(ef)
+        oak.Route(router, sessionStore, sessionName, entity, func(r *http.Request)oak.EntityStore</span><span class="cov0" title="0">{return memStore}</span>, getJoinResp, getEntityChangeResp, performAct)
+}
 
-func RouteGaeProd(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, deleteAfter time.Duration, clearOutAfter time.Duration, kind string, ctx context.Context, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string) error <span class="cov8" title="1">{
+func RouteGaeProd(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, deleteAfter time.Duration, clearOutAfter time.Duration, kind string, ctxFactory ContextFactory) error <span class="cov8" title="1">{
+        if kind == `` </span><span class="cov8" title="1">{
+                return errors.New(`kind must not be an empty string`)
+        }</span>
+        <span class="cov8" title="1">if deleteAfter.Seconds() &lt;= 0 </span><span class="cov8" title="1">{
+                return errors.New(`deleteAfter must be a positive time.Duration`)
+        }</span>
+        <span class="cov8" title="1">if clearOutAfter.Seconds() &lt;= 0 </span><span class="cov8" title="1">{
+                return errors.New(`clearOutAfter must be a positive time.Duration`)
+        }</span>
+
+        <span class="cov8" title="1">sessionStore := initCookieSessionStore(sessionMaxAge, newAuthKey, newCryptKey, oldAuthKey, oldCryptKey)
+        entityStoreFactory := func(r *http.Request)oak.EntityStore</span><span class="cov0" title="0">{
+                ctx := ctxFactory(r)
+                return newGaeStore(kind, ctx, ef, deleteAfter, clearOutAfter)
+        }</span>
+        <span class="cov8" title="1">oak.Route(router, sessionStore, sessionName, entity, entityStoreFactory, getJoinResp, getEntityChangeResp, performAct)
+        return nil</span>
+}
+
+func initCookieSessionStore(sessionMaxAge int, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string) sessions.Store <span class="cov8" title="1">{
         ss := sessions.NewCookieStore([]byte(newAuthKey), []byte(newCryptKey), []byte(oldAuthKey), []byte(oldCryptKey))
         ss.Options.HttpOnly = true
         ss.Options.MaxAge = sessionMaxAge
-        es, err := newGaeStore(kind, ctx, ef, deleteAfter, clearOutAfter)
-        if err != nil </span><span class="cov8" title="1">{
-                return err
-        }</span>
-        <span class="cov8" title="1">oak.Route(router, ss, sessionName, entity, es, getJoinResp, getEntityChangeResp, performAct)
-        return nil</span>
+        return ss
 }</pre>
 		
 		</div>
