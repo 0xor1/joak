@@ -8,8 +8,8 @@ import(
 	`net/http`
 	`appengine/aetest`
 	`github.com/gorilla/mux`
+	`golang.org/x/net/context`
 	`google.golang.org/appengine`
-	//`google.golang.org/appengine/datastore`
 	`github.com/stretchr/testify/assert`
 )
 
@@ -19,24 +19,24 @@ func Test_RouteLocalTest(t *testing.T){
 
 func Test_RouteGaeProd(t *testing.T){
 	c, _ := aetest.NewContext(nil)
-	ctx := appengine.NewContext(c.Request().(*http.Request))
+	ctxFactory := func(r *http.Request)context.Context{return appengine.NewContext(c.Request().(*http.Request))}
 	dur1, _ := time.ParseDuration(`-1s`)
 
-	err := RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur1, dur1, ``, ctx)
+	err := RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur1, dur1, ``, ctxFactory)
 
 	assert.Equal(t, `kind must not be an empty string`, err.Error(), `err should contain appropriate message`)
 
-	err = RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur1, dur1, `test`, ctx)
+	err = RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur1, dur1, `test`, ctxFactory)
 
 	assert.Equal(t, `deleteAfter must be a positive time.Duration`, err.Error(), `err should contain appropriate message`)
 
 	dur2, _ := time.ParseDuration(`1s`)
 
-	err = RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur2, dur1, `test`, ctx)
+	err = RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur2, dur1, `test`, ctxFactory)
 
 	assert.Equal(t, `clearOutAfter must be a positive time.Duration`, err.Error(), `err should contain appropriate message`)
 
-	err = RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur2, dur2, `test`, ctx)
+	err = RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur2, dur2, `test`, ctxFactory)
 
 	assert.Nil(t, err, `err should contain appropriate message`)
 }
@@ -77,9 +77,7 @@ func Test_GaeStore(t *testing.T){
 	c, _ := aetest.NewContext(nil)
 	ctx := appengine.NewContext(c.Request().(*http.Request))
 	dur, _ := time.ParseDuration(`1s`)
-	s, err := newGaeStore(`testEntity`, ctx, func()Entity{return &testEntity{}}, dur ,dur)
-
-	assert.Nil(t, err, `err should be nil`)
+	s := newGaeStore(`testEntity`, ctx, func()Entity{return &testEntity{}}, dur ,dur)
 
 	id, e, err := s.Create()
 	te := e.(*testEntity)
