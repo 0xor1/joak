@@ -14,12 +14,14 @@ import(
 )
 
 func Test_RouteLocalTest(t *testing.T){
-	RouteLocalTest(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil)
+	dur, _ := time.ParseDuration(`1s`)
+	RouteLocalTest(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur)
 }
 
 func Test_RouteLocalTest_EntityStoreFactory(t *testing.T){
 	router := mux.NewRouter()
-	RouteLocalTest(router, func()Entity{return &testEntity{}}, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil)
+	dur, _ := time.ParseDuration(`1s`)
+	RouteLocalTest(router, func()Entity{return &testEntity{}}, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur)
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(`POST`, `/create`, nil)
 
@@ -64,7 +66,8 @@ func Test_RouteGaeProd_EntityStoreFactory(t *testing.T){
 
 func Test_MemoryStore(t *testing.T){
 	re := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-	s := newMemoryStore(func()Entity{return &testEntity{}})
+	dur, _ := time.ParseDuration(`1s`)
+	s := newMemoryStore(func()Entity{return &testEntity{}}, dur)
 
 	id, e, err := s.Create()
 

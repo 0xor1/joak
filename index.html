@@ -54,7 +54,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com\0xor1\joak\joak.go (95.4%)</option>
+				<option value="file0">github.com\0xor1\joak\joak.go (95.3%)</option>
 				
 				</select>
 			</div>
@@ -143,8 +143,7 @@ func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter
         }</span>)}
 }
 
-func newMemoryStore(ef EntityFactory) oak.EntityStore <span class="cov8" title="1">{
-        var deleteAfter time.Duration
+func newMemoryStore(ef EntityFactory, deleteAfter time.Duration) oak.EntityStore <span class="cov8" title="1">{
         return &amp;entityStore{deleteAfter, func()</span><span class="cov8" title="1">{}</span>, sus.NewJsonMemoryStore(sid.Uuid, func()sus.Version<span class="cov8" title="1">{return ef()}</span>)}
 }
 
@@ -183,9 +182,9 @@ func (es *entityStore) Update(entityId string, entity oak.Entity) (error) <span 
         <span class="cov8" title="1">return es.inner.Update(entityId, e)</span>
 }
 
-func RouteLocalTest(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct)<span class="cov8" title="1">{
+func RouteLocalTest(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, deleteAfter time.Duration)<span class="cov8" title="1">{
         sessionStore := initCookieSessionStore(sessionMaxAge, newAuthKey, newCryptKey, oldAuthKey, oldCryptKey)
-        memStore := newMemoryStore(ef)
+        memStore := newMemoryStore(ef, deleteAfter)
         oak.Route(router, sessionStore, sessionName, entity, func(r *http.Request)oak.EntityStore</span><span class="cov8" title="1">{return memStore}</span>, getJoinResp, getEntityChangeResp, performAct)
 }
 

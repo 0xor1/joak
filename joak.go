@@ -73,8 +73,7 @@ func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter
 	})}
 }
 
-func newMemoryStore(ef EntityFactory) oak.EntityStore {
-	var deleteAfter time.Duration
+func newMemoryStore(ef EntityFactory, deleteAfter time.Duration) oak.EntityStore {
 	return &entityStore{deleteAfter, func(){}, sus.NewJsonMemoryStore(sid.Uuid, func()sus.Version{return ef()})}
 }
 
@@ -113,9 +112,9 @@ func (es *entityStore) Update(entityId string, entity oak.Entity) (error) {
 	return es.inner.Update(entityId, e)
 }
 
-func RouteLocalTest(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct){
+func RouteLocalTest(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, deleteAfter time.Duration){
 	sessionStore := initCookieSessionStore(sessionMaxAge, newAuthKey, newCryptKey, oldAuthKey, oldCryptKey)
-	memStore := newMemoryStore(ef)
+	memStore := newMemoryStore(ef, deleteAfter)
 	oak.Route(router, sessionStore, sessionName, entity, func(r *http.Request)oak.EntityStore{return memStore}, getJoinResp, getEntityChangeResp, performAct)
 }
 
