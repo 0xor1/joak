@@ -79,7 +79,7 @@ import(
 
 // Creates and configures a store that stores entities in Google AppEngines memcache and datastore.
 // github.com/qedus/nds is used for strongly consistent automatic caching.
-func NewGaeStore(kind string, ctx context.Context, idf sus.IdFactory, vf sus.VersionFactory) sus.Store <span class="cov8" title="1">{
+func NewGaeStore(kind string, ctx context.Context, idf sus.IdFactory, vf sus.VersionFactory, ei sus.EntityInitializer) sus.Store <span class="cov8" title="1">{
         getKey := func(ctx context.Context, id string) *datastore.Key </span><span class="cov8" title="1">{
                 return datastore.NewKey(ctx, kind, id, 0, nil)
         }</span>
@@ -125,7 +125,7 @@ func NewGaeStore(kind string, ctx context.Context, idf sus.IdFactory, vf sus.Ver
                 }</span>, &amp;datastore.TransactionOptions{XG:true})
         }
 
-        <span class="cov8" title="1">return sus.NewStore(getMulti, putMulti, delMulti, idf, vf, isNonExtantError,rit)</span>
+        <span class="cov8" title="1">return sus.NewStore(getMulti, putMulti, delMulti, idf, vf, ei, isNonExtantError, rit)</span>
 }</pre>
 		
 		</div>

@@ -193,10 +193,13 @@ func newFooMemoryStore(m Marshaler, un Unmarshaler) *fooMemoryStore {
 	vf := func() Version {
 		return &foo{}
 	}
+	ei := func(v Version) Version{
+		return v
+	}
 	if(m == nil) {
-		inner = NewJsonMemoryStore(idf, vf)
+		inner = NewJsonMemoryStore(idf, vf, ei)
 	} else{
-		inner = NewMemoryStore(m, un, idf, vf)
+		inner = NewMemoryStore(m, un, idf, vf, ei)
 	}
 	return &fooMemoryStore{
 		inner: inner,

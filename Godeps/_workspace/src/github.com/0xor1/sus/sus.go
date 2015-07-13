@@ -36,10 +36,11 @@ type GetMulti func(ids []string) ([]Version, error)
 type PutMulti func(ids []string, vs []Version) error
 type DeleteMulti func(ids []string) error
 type IsNonExtantError func(error) bool
+type EntityInitializer func(v Version) Version
 
 // Create and configure a core store.
-func NewStore(gm GetMulti, pm PutMulti, dm DeleteMulti, idf IdFactory, vf VersionFactory, inee IsNonExtantError, rit RunInTransaction) Store {
-	return &store{gm, pm, dm, idf, vf, inee, rit}
+func NewStore(gm GetMulti, pm PutMulti, dm DeleteMulti, idf IdFactory, vf VersionFactory, ei EntityInitializer, inee IsNonExtantError, rit RunInTransaction) Store {
+	return &store{gm, pm, dm, idf, vf, ei, inee, rit}
 }
 
 type store struct{
@@ -48,6 +49,7 @@ type store struct{
 	deleteMulti			DeleteMulti
 	idFactory 			IdFactory
 	versionFactory 		VersionFactory
+	entityInitializer 	EntityInitializer
 	isNonExtantError	IsNonExtantError
 	runInTransaction	RunInTransaction
 }
@@ -73,7 +75,7 @@ func (s *store) CreateMulti(count uint) (ids []string, vs []Version, err error) 
 		vs = make([]Version, count, count)
 		for i := 0; i < icount; i++ {
 			ids[i] = s.idFactory()
-			vs[i] = s.versionFactory()
+			vs[i] = s.entityInitializer(s.versionFactory())
 		}
 		return s.putMulti(ids, vs)
 	})

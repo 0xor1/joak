@@ -9,11 +9,11 @@
 		},
 		{
 			"ImportPath": "github.com/0xor1/gus",
-			"Rev": "0d4a2d9832d78b9e5cd66d589bb63beed2f1f478"
+			"Rev": "39eb469a1847787c8b4ee0e6df04e06115eef7bc"
 		},
 		{
 			"ImportPath": "github.com/0xor1/oak",
-			"Rev": "ee5077378c3d31bdf4d00375fa35f7ffd591e639"
+			"Rev": "e544defc089504e987a04b788e91f860ec18a0a9"
 		},
 		{
 			"ImportPath": "github.com/0xor1/sid",
@@ -21,7 +21,7 @@
 		},
 		{
 			"ImportPath": "github.com/0xor1/sus",
-			"Rev": "8494b155702daa1008b8e75aca5767c73c01f338"
+			"Rev": "c69ca81881085f33cac368aeca68ed570d549708"
 		},
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",

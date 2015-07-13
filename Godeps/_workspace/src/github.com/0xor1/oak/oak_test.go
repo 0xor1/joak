@@ -166,7 +166,7 @@ func Test_poll_with_no_change(t *testing.T) {
 
 	tr.ServeHTTP(w, r)
 
-	assert.Equal(t, `{}`, w.Body.String(), `response body should be error message`)
+	assert.Equal(t, ``, w.Body.String(), `response body should be error message`)
 	assert.Equal(t, 200, w.Code, `return code should be 200`)
 }
 

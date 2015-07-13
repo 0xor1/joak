@@ -191,10 +191,13 @@ func newFooFileStore(dir string, fileExt string, m Marshaler, un Unmarshaler) (*
 	vf := func() Version {
 		return &foo{}
 	}
+	ei := func(v Version) Version {
+		return v
+	}
 	if(m == nil) {
-		inner, err = NewJsonFileStore(dir, idf, vf)
+		inner, err = NewJsonFileStore(dir, idf, vf, ei)
 	} else{
-		inner, err = NewFileStore(dir, fileExt, m, un, idf, vf)
+		inner, err = NewFileStore(dir, fileExt, m, un, idf, vf, ei)
 	}
 	if err != nil {
 		return nil, err

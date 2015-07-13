@@ -11,7 +11,7 @@ type BytePutter func(id string, d []byte) error
 type Deleter func(id string) error
 
 // Creates and configures a store that stores entities by converting them to and from []byte and ensures versioning correctness with mutex locks.
-func NewMutexByteStore(bg ByteGetter, bp BytePutter, d Deleter, m Marshaler, un Unmarshaler, idf IdFactory, vf VersionFactory, inee IsNonExtantError) Store {
+func NewMutexByteStore(bg ByteGetter, bp BytePutter, d Deleter, m Marshaler, un Unmarshaler, idf IdFactory, vf VersionFactory, ei EntityInitializer, inee IsNonExtantError) Store {
 	mtx := sync.Mutex{}
 
 	getMulti := func(ids []string) ([]Version, error) {
@@ -67,7 +67,7 @@ func NewMutexByteStore(bg ByteGetter, bp BytePutter, d Deleter, m Marshaler, un 
 		return tran()
 	}
 
-	return NewStore(getMulti, putMulti, delMulti, idf, vf, inee, rit)
+	return NewStore(getMulti, putMulti, delMulti, idf, vf, ei, inee, rit)
 }
 
 type localEntityDoesNotExistError struct{

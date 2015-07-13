@@ -159,7 +159,6 @@ func Route(router *mux.Router, sessionStore sessions.Store, sessionName string, 
 		}
 
 		if version == entity.GetVersion() {
-			writeJson(w, &Json{})
 			return
 		}
 

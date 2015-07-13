@@ -70,10 +70,12 @@ func newFooGaeStore() *fooGaeStore {
 	}
 	vf := func() sus.Version {
 		return &foo{}
-
+	}
+	ei := func(v sus.Version) sus.Version {
+		return v
 	}
 	return &fooGaeStore{
-		inner: NewGaeStore(`foo`, ctx, idf, vf),
+		inner: NewGaeStore(`foo`, ctx, idf, vf, ei),
 	}
 }
 

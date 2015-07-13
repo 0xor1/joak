@@ -6,12 +6,12 @@ import(
 )
 
 // Creates and configures a store that stores entities by converting them to and from json []byte data and keeps them in the local file system.
-func NewJsonFileStore(storeDir string, idf IdFactory, vf VersionFactory) (Store, error) {
-	return NewFileStore(storeDir, `json`, jsonMarshaler, jsonUnmarshaler, idf, vf)
+func NewJsonFileStore(storeDir string, idf IdFactory, vf VersionFactory, ei EntityInitializer) (Store, error) {
+	return NewFileStore(storeDir, `json`, jsonMarshaler, jsonUnmarshaler, idf, vf, ei)
 }
 
 // Creates and configures a store that stores entities by converting them to and from []byte and keeps them in the local file system.
-func NewFileStore(storeDir string, fileExt string, m Marshaler, un Unmarshaler, idf IdFactory, vf VersionFactory) (Store, error) {
+func NewFileStore(storeDir string, fileExt string, m Marshaler, un Unmarshaler, idf IdFactory, vf VersionFactory, ei EntityInitializer) (Store, error) {
 	err := os.MkdirAll(storeDir, os.ModeDir)
 
 	if err != nil {
@@ -46,5 +46,5 @@ func NewFileStore(storeDir string, fileExt string, m Marshaler, un Unmarshaler, 
 		return ok
 	}
 
-	return NewMutexByteStore(get, put, del, m, un, idf, vf, isNonExtantError), nil
+	return NewMutexByteStore(get, put, del, m, un, idf, vf, ei, isNonExtantError), nil
 }

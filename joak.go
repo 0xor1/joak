@@ -32,11 +32,13 @@ type ContextFactory func(r *http.Request) context.Context
 
 type EntityFactory func()Entity
 
+type EntityInitializer func(e Entity) Entity
+
 func now() time.Time {
 	return time.Now().UTC()
 }
 
-func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter time.Duration, clearOutAfter time.Duration) (oak.EntityStore) {
+func newGaeStore(kind string, ctx context.Context, ef EntityFactory, ei EntityInitializer, deleteAfter time.Duration, clearOutAfter time.Duration) (oak.EntityStore) {
 
 	clearOut := func() {
 		mtx.Lock()
@@ -70,11 +72,13 @@ func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter
 		e := ef()
 		e.SetDeleteAfter(now().Add(deleteAfter))
 		return e
+	}, func(v sus.Version)sus.Version{
+		return ei(v.(Entity))
 	})}
 }
 
-func newMemoryStore(ef EntityFactory, deleteAfter time.Duration) oak.EntityStore {
-	return &entityStore{deleteAfter, func(){}, sus.NewJsonMemoryStore(sid.Uuid, func()sus.Version{return ef()})}
+func newMemoryStore(ef EntityFactory, ei EntityInitializer, deleteAfter time.Duration) oak.EntityStore {
+	return &entityStore{deleteAfter, func(){}, sus.NewJsonMemoryStore(sid.Uuid, func()sus.Version{return ef()}, func(v sus.Version)sus.Version{return ei(v.(Entity))})}
 }
 
 type entityStore struct {
@@ -112,13 +116,13 @@ func (es *entityStore) Update(entityId string, entity oak.Entity) (error) {
 	return es.inner.Update(entityId, e)
 }
 
-func RouteLocalTest(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, deleteAfter time.Duration){
+func RouteLocalTest(router *mux.Router, ef EntityFactory, ei EntityInitializer, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, deleteAfter time.Duration){
 	sessionStore := initCookieSessionStore(sessionMaxAge, newAuthKey, newCryptKey, oldAuthKey, oldCryptKey)
-	memStore := newMemoryStore(ef, deleteAfter)
+	memStore := newMemoryStore(ef, ei, deleteAfter)
 	oak.Route(router, sessionStore, sessionName, entity, func(r *http.Request)oak.EntityStore{return memStore}, getJoinResp, getEntityChangeResp, performAct)
 }
 
-func RouteGaeProd(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, deleteAfter time.Duration, clearOutAfter time.Duration, kind string, ctxFactory ContextFactory) error {
+func RouteGaeProd(router *mux.Router, ef EntityFactory, ei EntityInitializer, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, deleteAfter time.Duration, clearOutAfter time.Duration, kind string, ctxFactory ContextFactory) error {
 	if kind == `` {
 		return errors.New(`kind must not be an empty string`)
 	}
@@ -132,7 +136,7 @@ func RouteGaeProd(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessi
 	sessionStore := initCookieSessionStore(sessionMaxAge, newAuthKey, newCryptKey, oldAuthKey, oldCryptKey)
 	entityStoreFactory := func(r *http.Request)oak.EntityStore{
 		ctx := ctxFactory(r)
-		return newGaeStore(kind, ctx, ef, deleteAfter, clearOutAfter)
+		return newGaeStore(kind, ctx, ef, ei, deleteAfter, clearOutAfter)
 	}
 	oak.Route(router, sessionStore, sessionName, entity, entityStoreFactory, getJoinResp, getEntityChangeResp, performAct)
 	return nil

@@ -15,13 +15,13 @@ import(
 
 func Test_RouteLocalTest(t *testing.T){
 	dur, _ := time.ParseDuration(`1s`)
-	RouteLocalTest(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur)
+	RouteLocalTest(mux.NewRouter(), nil, nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur)
 }
 
 func Test_RouteLocalTest_EntityStoreFactory(t *testing.T){
 	router := mux.NewRouter()
 	dur, _ := time.ParseDuration(`1s`)
-	RouteLocalTest(router, func()Entity{return &testEntity{}}, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur)
+	RouteLocalTest(router, func()Entity{return &testEntity{}}, func(e Entity)Entity{return e}, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur)
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(`POST`, `/create`, nil)
 
@@ -33,21 +33,21 @@ func Test_RouteGaeProd(t *testing.T){
 	ctxFactory := func(r *http.Request)context.Context{return appengine.NewContext(c.Request().(*http.Request))}
 	dur1, _ := time.ParseDuration(`-1s`)
 
-	err := RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur1, dur1, ``, ctxFactory)
+	err := RouteGaeProd(mux.NewRouter(), nil, nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur1, dur1, ``, ctxFactory)
 
 	assert.Equal(t, `kind must not be an empty string`, err.Error(), `err should contain appropriate message`)
 
-	err = RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur1, dur1, `test`, ctxFactory)
+	err = RouteGaeProd(mux.NewRouter(), nil, nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur1, dur1, `test`, ctxFactory)
 
 	assert.Equal(t, `deleteAfter must be a positive time.Duration`, err.Error(), `err should contain appropriate message`)
 
 	dur2, _ := time.ParseDuration(`1s`)
 
-	err = RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur2, dur1, `test`, ctxFactory)
+	err = RouteGaeProd(mux.NewRouter(), nil, nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur2, dur1, `test`, ctxFactory)
 
 	assert.Equal(t, `clearOutAfter must be a positive time.Duration`, err.Error(), `err should contain appropriate message`)
 
-	err = RouteGaeProd(mux.NewRouter(), nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur2, dur2, `test`, ctxFactory)
+	err = RouteGaeProd(mux.NewRouter(), nil, nil, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur2, dur2, `test`, ctxFactory)
 
 	assert.Nil(t, err, `err should be nil`)
 }
@@ -57,7 +57,7 @@ func Test_RouteGaeProd_EntityStoreFactory(t *testing.T){
 	ctxFactory := func(r *http.Request)context.Context{return appengine.NewContext(c.Request().(*http.Request))}
 	dur, _ := time.ParseDuration(`1s`)
 	router := mux.NewRouter()
-	RouteGaeProd(router, func()Entity{return &testEntity{}}, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur, dur, `test`, ctxFactory)
+	RouteGaeProd(router, func()Entity{return &testEntity{}}, func(e Entity)Entity{return e}, 300, ``, ``, ``, ``, `test`, &testEntity{}, nil, nil, nil, dur, dur, `test`, ctxFactory)
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest(`POST`, `/create`, nil)
 
@@ -67,7 +67,7 @@ func Test_RouteGaeProd_EntityStoreFactory(t *testing.T){
 func Test_MemoryStore(t *testing.T){
 	re := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 	dur, _ := time.ParseDuration(`1s`)
-	s := newMemoryStore(func()Entity{return &testEntity{}}, dur)
+	s := newMemoryStore(func()Entity{return &testEntity{}}, func(e Entity)Entity{return e}, dur)
 
 	id, e, err := s.Create()
 
@@ -101,7 +101,7 @@ func Test_GaeStore(t *testing.T){
 	c, _ := aetest.NewContext(nil)
 	ctx := appengine.NewContext(c.Request().(*http.Request))
 	dur, _ := time.ParseDuration(`1s`)
-	s := newGaeStore(`testEntity`, ctx, func()Entity{return &testEntity{}}, dur ,dur)
+	s := newGaeStore(`testEntity`, ctx, func()Entity{return &testEntity{}}, func(e Entity)Entity{return e}, dur ,dur)
 
 	id, e, err := s.Create()
 	te := e.(*testEntity)

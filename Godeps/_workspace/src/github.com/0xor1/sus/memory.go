@@ -13,12 +13,12 @@ func jsonUnmarshaler(d []byte, v Version) error{
 }
 
 // Creates and configures a store that stores entities by converting them to and from json []byte data and keeps them in the local system memory.
-func NewJsonMemoryStore(idf IdFactory, vf VersionFactory) Store {
-	return NewMemoryStore(jsonMarshaler, jsonUnmarshaler, idf, vf)
+func NewJsonMemoryStore(idf IdFactory, vf VersionFactory, ei EntityInitializer) Store {
+	return NewMemoryStore(jsonMarshaler, jsonUnmarshaler, idf, vf, ei)
 }
 
 // Creates and configures a store that stores entities by converting them to and from []byte and keeps them in the local system memory.
-func NewMemoryStore(m Marshaler, un Unmarshaler, idf IdFactory, vf VersionFactory) Store {
+func NewMemoryStore(m Marshaler, un Unmarshaler, idf IdFactory, vf VersionFactory, ei EntityInitializer) Store {
 	store := map[string][]byte{}
 
 	get := func(id string) ([]byte, error) {
@@ -45,5 +45,5 @@ func NewMemoryStore(m Marshaler, un Unmarshaler, idf IdFactory, vf VersionFactor
 		return ok
 	}
 
-	return NewMutexByteStore(get, put, del, m, un, idf, vf, isNonExtantError)
+	return NewMutexByteStore(get, put, del, m, un, idf, vf, ei, isNonExtantError)
 }
