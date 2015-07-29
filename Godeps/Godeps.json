@@ -45,7 +45,7 @@
 		},
 		{
 			"ImportPath": "github.com/qedus/nds",
-			"Rev": "61052b4c9e6babb68b0a040de842a27cb6d36763"
+			"Rev": "ee3006868d476c1628c2584ef7557d811f9f91c1"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
