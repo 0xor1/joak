@@ -54,7 +54,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com\0xor1\joak\joak.go (95.4%)</option>
+				<option value="file0">github.com\0xor1\joak\joak.go (98.4%)</option>
 				
 				</select>
 			</div>
@@ -102,21 +102,18 @@ type ContextFactory func(r *http.Request) context.Context
 
 type EntityFactory func()Entity
 
+type EntityInitializer func(e Entity) Entity
+
 func now() time.Time <span class="cov8" title="1">{
         return time.Now().UTC()
 }</span>
 
-func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter time.Duration, clearOutAfter time.Duration) (oak.EntityStore) <span class="cov8" title="1">{
+func newGaeStore(kind string, ctx context.Context, ef EntityFactory, ei EntityInitializer, deleteAfter time.Duration, clearOutAfter time.Duration) (oak.EntityStore) <span class="cov8" title="1">{
 
         clearOut := func() </span><span class="cov8" title="1">{
                 mtx.Lock()
-                myLastClearOutInst := kindToLastClearOutMap[kind]
                 if kindToLastClearOutMap[kind].IsZero() || time.Since(kindToLastClearOutMap[kind]) &gt;= clearOutAfter </span><span class="cov8" title="1">{
-                        if kindToLastClearOutMap[kind] != myLastClearOutInst </span><span class="cov0" title="0">{
-                                mtx.Unlock()
-                                return
-                        }</span>
-                        <span class="cov8" title="1">kindToLastClearOutMap[kind] = now()
+                        kindToLastClearOutMap[kind] = now()
                         mtx.Unlock()
                         q := datastore.NewQuery(kind).Filter(`DeleteAfter &lt;=`, now()).KeysOnly()
                         keys := []*datastore.Key{}
@@ -140,12 +137,13 @@ func newGaeStore(kind string, ctx context.Context, ef EntityFactory, deleteAfter
                 e := ef()
                 e.SetDeleteAfter(now().Add(deleteAfter))
                 return e
+        }</span>, func(v sus.Version)sus.Version<span class="cov8" title="1">{
+                return ei(v.(Entity))
         }</span>)}
 }
 
-func newMemoryStore(ef EntityFactory) oak.EntityStore <span class="cov8" title="1">{
-        var deleteAfter time.Duration
-        return &amp;entityStore{deleteAfter, func()</span><span class="cov8" title="1">{}</span>, sus.NewJsonMemoryStore(sid.Uuid, func()sus.Version<span class="cov8" title="1">{return ef()}</span>)}
+func newMemoryStore(ef EntityFactory, ei EntityInitializer, deleteAfter time.Duration) oak.EntityStore <span class="cov8" title="1">{
+        return &amp;entityStore{deleteAfter, func()</span><span class="cov8" title="1">{}</span>, sus.NewJsonMemoryStore(sid.Uuid, func()sus.Version<span class="cov8" title="1">{return ef()}</span>, func(v sus.Version)sus.Version<span class="cov8" title="1">{return ei(v.(Entity))}</span>)}
 }
 
 type entityStore struct {
@@ -183,13 +181,13 @@ func (es *entityStore) Update(entityId string, entity oak.Entity) (error) <span 
         <span class="cov8" title="1">return es.inner.Update(entityId, e)</span>
 }
 
-func RouteLocalTest(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct)<span class="cov8" title="1">{
+func RouteLocalTest(router *mux.Router, ef EntityFactory, ei EntityInitializer, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, deleteAfter time.Duration)<span class="cov8" title="1">{
         sessionStore := initCookieSessionStore(sessionMaxAge, newAuthKey, newCryptKey, oldAuthKey, oldCryptKey)
-        memStore := newMemoryStore(ef)
+        memStore := newMemoryStore(ef, ei, deleteAfter)
         oak.Route(router, sessionStore, sessionName, entity, func(r *http.Request)oak.EntityStore</span><span class="cov8" title="1">{return memStore}</span>, getJoinResp, getEntityChangeResp, performAct)
 }
 
-func RouteGaeProd(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, deleteAfter time.Duration, clearOutAfter time.Duration, kind string, ctxFactory ContextFactory) error <span class="cov8" title="1">{
+func RouteGaeProd(router *mux.Router, ef EntityFactory, ei EntityInitializer, sessionMaxAge int, sessionName string, newAuthKey string, newCryptKey string, oldAuthKey string, oldCryptKey string, entity Entity, getJoinResp oak.GetJoinResp, getEntityChangeResp oak.GetEntityChangeResp, performAct oak.PerformAct, deleteAfter time.Duration, clearOutAfter time.Duration, kind string, ctxFactory ContextFactory) error <span class="cov8" title="1">{
         if kind == `` </span><span class="cov8" title="1">{
                 return errors.New(`kind must not be an empty string`)
         }</span>
@@ -203,7 +201,7 @@ func RouteGaeProd(router *mux.Router, ef EntityFactory, sessionMaxAge int, sessi
         <span class="cov8" title="1">sessionStore := initCookieSessionStore(sessionMaxAge, newAuthKey, newCryptKey, oldAuthKey, oldCryptKey)
         entityStoreFactory := func(r *http.Request)oak.EntityStore</span><span class="cov8" title="1">{
                 ctx := ctxFactory(r)
-                return newGaeStore(kind, ctx, ef, deleteAfter, clearOutAfter)
+                return newGaeStore(kind, ctx, ef, ei, deleteAfter, clearOutAfter)
         }</span>
         <span class="cov8" title="1">oak.Route(router, sessionStore, sessionName, entity, entityStoreFactory, getJoinResp, getEntityChangeResp, performAct)
         return nil</span>
