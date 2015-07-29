@@ -54,7 +54,7 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com\0xor1\joak\joak.go (95.5%)</option>
+				<option value="file0">github.com\0xor1\joak\joak.go (98.4%)</option>
 				
 				</select>
 			</div>
@@ -112,13 +112,8 @@ func newGaeStore(kind string, ctx context.Context, ef EntityFactory, ei EntityIn
 
         clearOut := func() </span><span class="cov8" title="1">{
                 mtx.Lock()
-                myLastClearOutInst := kindToLastClearOutMap[kind]
                 if kindToLastClearOutMap[kind].IsZero() || time.Since(kindToLastClearOutMap[kind]) &gt;= clearOutAfter </span><span class="cov8" title="1">{
-                        if kindToLastClearOutMap[kind] != myLastClearOutInst </span><span class="cov0" title="0">{
-                                mtx.Unlock()
-                                return
-                        }</span>
-                        <span class="cov8" title="1">kindToLastClearOutMap[kind] = now()
+                        kindToLastClearOutMap[kind] = now()
                         mtx.Unlock()
                         q := datastore.NewQuery(kind).Filter(`DeleteAfter &lt;=`, now()).KeysOnly()
                         keys := []*datastore.Key{}

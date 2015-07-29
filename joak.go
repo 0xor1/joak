@@ -42,12 +42,7 @@ func newGaeStore(kind string, ctx context.Context, ef EntityFactory, ei EntityIn
 
 	clearOut := func() {
 		mtx.Lock()
-		myLastClearOutInst := kindToLastClearOutMap[kind]
 		if kindToLastClearOutMap[kind].IsZero() || time.Since(kindToLastClearOutMap[kind]) >= clearOutAfter {
-			if kindToLastClearOutMap[kind] != myLastClearOutInst {
-				mtx.Unlock()
-				return
-			}
 			kindToLastClearOutMap[kind] = now()
 			mtx.Unlock()
 			q := datastore.NewQuery(kind).Filter(`DeleteAfter <=`, now()).KeysOnly()
